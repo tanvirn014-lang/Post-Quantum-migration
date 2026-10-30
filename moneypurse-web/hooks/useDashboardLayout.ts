@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export const WIDGET_IDS = ["accounts", "cashflow", "spending", "pots", "cards", "transactions"] as const;
 
@@ -7,6 +7,10 @@ const STORAGE_KEY = "moneypurse.dashboard.layout.v1";
 interface StoredLayout {
   order: string[];
   hidden: string[];
+}
+
+function defaultLayout(): StoredLayout {
+  return { order: [...WIDGET_IDS], hidden: [] };
 }
 
 function loadLayout(): StoredLayout {
@@ -28,7 +32,15 @@ function saveLayout(layout: StoredLayout): void {
 }
 
 export function useDashboardLayout() {
-  const [layout, setLayout] = useState<StoredLayout>(loadLayout);
+  // Always starts from the default on both server and the first client render, so SSR
+  // output and the initial hydration pass match exactly (reading localStorage during that
+  // first render caused a hydration mismatch whenever a visitor had a non-default saved
+  // layout). The real saved layout is applied in an effect, after hydration.
+  const [layout, setLayout] = useState<StoredLayout>(defaultLayout);
+
+  useEffect(() => {
+    setLayout(loadLayout());
+  }, []);
 
   const reorder = useCallback((from: number, to: number) => {
     setLayout((prev) => {
