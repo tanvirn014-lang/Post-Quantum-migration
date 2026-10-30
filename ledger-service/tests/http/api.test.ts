@@ -89,6 +89,7 @@ describe("HTTP API", () => {
     const fetchedTx = await app.inject({ method: "GET", url: `/transactions/${transaction.id}` });
     assert.strictEqual(fetchedTx.statusCode, 200);
     assert.strictEqual(fetchedTx.json().postings.length, 2);
+    assert.ok(fetchedTx.json().postings[0].createdAt);
   });
 
   it("returns 409 when a transfer would overdraw a non-overdraft account", async () => {

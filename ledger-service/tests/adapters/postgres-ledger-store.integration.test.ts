@@ -72,7 +72,7 @@ describe(
       const from = await fundedAccount(10_000n);
       const to = await store.createAccount({ ownerCustomerId: randomUUID(), currency: "BDT" });
 
-      await store.postTransaction({
+      const transaction = await store.postTransaction({
         idempotencyKey: randomUUID(),
         description: "rent split",
         postings: [
@@ -83,6 +83,9 @@ describe(
 
       assert.strictEqual((await store.getAccount(from.id))!.balanceMinorUnits, 7_500n);
       assert.strictEqual((await store.getAccount(to.id))!.balanceMinorUnits, 2_500n);
+
+      const withPostings = await store.getTransactionWithPostings(transaction.id);
+      assert.ok(withPostings!.postings[0]!.createdAt instanceof Date);
     });
 
     it("rolls back the whole transaction when an account would be overdrawn", async () => {

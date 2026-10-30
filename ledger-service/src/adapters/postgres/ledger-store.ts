@@ -32,6 +32,7 @@ interface PostingRow {
   account_id: string;
   amount_minor_units: string;
   currency: string;
+  created_at: Date;
 }
 
 function mapAccountRow(row: AccountRow): Account {
@@ -64,6 +65,7 @@ function mapPostingRow(row: PostingRow): Posting {
     accountId: row.account_id,
     amountMinorUnits: BigInt(row.amount_minor_units),
     currency: row.currency,
+    createdAt: row.created_at,
   };
 }
 

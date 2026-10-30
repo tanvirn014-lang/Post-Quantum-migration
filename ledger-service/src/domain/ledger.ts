@@ -34,6 +34,7 @@ export interface PostingInput {
 export interface Posting extends PostingInput {
   id: string;
   transactionId: string;
+  createdAt: Date;
 }
 
 export interface TransactionInput {

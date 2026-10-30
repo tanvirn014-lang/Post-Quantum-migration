@@ -70,6 +70,7 @@ export class MemoryLedgerStore implements LedgerStore {
       accountId: p.accountId,
       amountMinorUnits: p.amountMinorUnits,
       currency: p.currency.toUpperCase(),
+      createdAt: postedAt,
     }));
 
     this.transactions.set(transactionId, transaction);

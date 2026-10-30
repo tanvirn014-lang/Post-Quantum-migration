@@ -35,5 +35,6 @@ export function toPostingDTO(posting: Posting) {
     accountId: posting.accountId,
     amountMinorUnits: posting.amountMinorUnits.toString(),
     currency: posting.currency,
+    createdAt: posting.createdAt.toISOString(),
   };
 }
