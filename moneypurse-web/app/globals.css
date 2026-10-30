@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+:root {
+  /* Three distinguishable dark layers, darkest to lightest, plus text/border/accent. */
+  --surface-base: #0b0d11;
+  --surface-raised: #14171d;
+  --surface-overlay: #1e222a;
+  --text-primary: #f3f4f6;
+  --text-muted: #9499a6;
+  --border-subtle: #2a2f38;
+  --accent: #f59e0b;
+}
+
+/* Theme keys below are named so the Tailwind utilities they produce match the
+   plan's exact names: bg-surface-base, text-primary, text-muted, border-subtle,
+   bg-accent/text-accent/border-accent (Tailwind's color-utility suffix is
+   whatever follows "--color-", e.g. --color-primary -> text-primary/bg-primary). */
+@theme inline {
+  --color-surface-base: var(--surface-base);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-primary: var(--text-primary);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--border-subtle);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--surface-base);
+  color: var(--text-primary);
+}
