@@ -27,6 +27,7 @@ export interface Posting {
   accountId: string;
   amountMinorUnits: string;
   currency: string;
+  createdAt: string;
 }
 
 export interface ApiError {
