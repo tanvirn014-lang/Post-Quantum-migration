@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { getSavingsPots } from "../lib/mock/pots";
 
+export type { Pot } from "../lib/mock/pots";
+
 export function useSavingsPots(customerId: string) {
   return useQuery({
     queryKey: ["savingsPots", customerId],

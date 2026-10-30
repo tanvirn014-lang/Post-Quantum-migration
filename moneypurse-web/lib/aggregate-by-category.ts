@@ -1,5 +1,5 @@
 import type { Posting } from "./api/types";
-import { categorize } from "./mock/categorize";
+import { categorize } from "./categorize";
 
 export interface CategorySpend {
   category: string;
@@ -8,7 +8,7 @@ export interface CategorySpend {
 }
 
 /**
- * Groups expense (negative) postings by a mock category guess (see lib/mock/categorize.ts)
+ * Groups expense (negative) postings by a mock category guess (see lib/categorize.ts)
  * derived from the owning transaction's description. Income postings are excluded - this is
  * a spending breakdown, not a cash-flow view (see CashFlowChart for that).
  */

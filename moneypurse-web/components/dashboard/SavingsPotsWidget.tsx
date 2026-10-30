@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import { DEMO_CUSTOMER_ACCOUNTS } from "../../lib/demo-accounts";
-import { useSavingsPots } from "../../hooks/useSavingsPots";
+import { useSavingsPots, type Pot } from "../../hooks/useSavingsPots";
 import { formatCurrency } from "../../lib/format";
 import { DashboardWidget } from "./DashboardWidget";
 import { ProgressBar } from "../ui/ProgressBar";
 import { Button } from "../ui/Button";
 import { Drawer } from "../ui/Drawer";
-import type { Pot } from "../../lib/mock/pots";
 
 export function SavingsPotsWidget({
   editMode,

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { DEMO_CUSTOMER_ACCOUNTS } from "../../lib/demo-accounts";
 import { usePostings, useTransactionDescriptions } from "../../hooks/useTransactions";
 import { formatCurrency, formatRelativeDate } from "../../lib/format";
-import { categorize } from "../../lib/mock/categorize";
+import { categorize } from "../../lib/categorize";
 import { DashboardWidget } from "./DashboardWidget";
 import { Button } from "../ui/Button";
 import { Drawer } from "../ui/Drawer";

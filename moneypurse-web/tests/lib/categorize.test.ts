@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { categorize } from "../../../lib/mock/categorize.js";
+import { categorize } from "../../lib/categorize.js";
 
 test("categorizes a grocery-looking description", () => {
   assert.strictEqual(categorize("Shwapno Supermarket"), "Groceries");
