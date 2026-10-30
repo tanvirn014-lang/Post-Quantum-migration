@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { listPostings } from "../lib/api/ledger-client.js";
+import { listPostings } from "../lib/api/ledger-client";
 
 export function usePostings(accountId: string, limit?: number) {
   return useQuery({

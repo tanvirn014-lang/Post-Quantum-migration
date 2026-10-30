@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { Sidebar } from "./Sidebar.js";
-import { Header } from "./Header.js";
+import { Sidebar } from "./Sidebar";
+import { Header } from "./Header";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (

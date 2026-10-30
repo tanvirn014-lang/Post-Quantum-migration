@@ -1,5 +1,5 @@
-import { Avatar } from "../ui/Avatar.js";
-import { Badge } from "../ui/Badge.js";
+import { Avatar } from "../ui/Avatar";
+import { Badge } from "../ui/Badge";
 
 export interface HeaderProps {
   greeting: string;

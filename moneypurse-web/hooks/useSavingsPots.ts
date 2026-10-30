@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getSavingsPots } from "../lib/mock/pots.js";
+import { getSavingsPots } from "../lib/mock/pots";
 
 export function useSavingsPots(customerId: string) {
   return useQuery({

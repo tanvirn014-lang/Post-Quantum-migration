@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getCards } from "../lib/mock/cards.js";
+import { getCards } from "../lib/mock/cards";
 
 export function useCards(customerId: string) {
   return useQuery({

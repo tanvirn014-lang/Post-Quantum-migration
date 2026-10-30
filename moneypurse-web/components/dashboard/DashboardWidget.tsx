@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { Card } from "../ui/Card.js";
-import { Button } from "../ui/Button.js";
+import { Card } from "../ui/Card";
+import { Button } from "../ui/Button";
 
 export interface DashboardWidgetQueryState {
   isLoading: boolean;

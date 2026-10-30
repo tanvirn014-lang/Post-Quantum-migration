@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getAlerts } from "../lib/mock/alerts.js";
+import { getAlerts } from "../lib/mock/alerts";
 
 export function useAlerts(customerId: string) {
   return useQuery({
