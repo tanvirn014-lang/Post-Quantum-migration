@@ -1,0 +1,10 @@
+// Single entry point for `node --test`, which this project's npm script passes a literal
+// file path rather than a glob (glob expansion is a shell feature, not a Node one, and
+// differs between bash, PowerShell and cmd.exe). Importing each suite here for its side
+// effect (registering its describe/it blocks) is enough for node:test to run all of them.
+import "./domain/money.test.js";
+import "./domain/ledger.test.js";
+import "./app/ledger-service.test.js";
+import "./http/api.test.js";
+// Skips itself unless DATABASE_URL is set - see the file for how to run it for real.
+import "./adapters/postgres-ledger-store.integration.test.js";
