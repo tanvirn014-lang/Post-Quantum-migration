@@ -4,3 +4,4 @@ import "./lib/format.test.js";
 import "./lib/api/ledger-client.test.js";
 import "./lib/mock/categorize.test.js";
 import "./hooks/useAccounts.test.js";
+import "./hooks/useDashboardLayout.test.js";
