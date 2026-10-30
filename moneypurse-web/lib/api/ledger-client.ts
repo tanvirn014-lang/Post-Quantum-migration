@@ -22,6 +22,11 @@ export async function listPostings(accountId: string, limit?: number): Promise<P
   return parseOrThrow<Posting[]>(res);
 }
 
+export async function getTransaction(transactionId: string): Promise<{ transaction: Transaction; postings: Posting[] }> {
+  const res = await fetch(`${baseUrl}/transactions/${transactionId}`);
+  return parseOrThrow<{ transaction: Transaction; postings: Posting[] }>(res);
+}
+
 export interface PostTransferInput {
   idempotencyKey: string;
   fromAccountId: string;

@@ -3,6 +3,7 @@
 import { AppShell } from "../../components/layout/AppShell";
 import { AccountSummaryCards } from "../../components/dashboard/AccountSummaryCards";
 import { CashFlowChart } from "../../components/dashboard/CashFlowChart";
+import { SpendingByCategoryChart } from "../../components/dashboard/SpendingByCategoryChart";
 
 // Edit-mode/hide wiring (via useDashboardLayout) lands in Task 19; until then every widget
 // gets static defaults (always visible, not in edit mode) so each one can be built and
@@ -15,6 +16,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AccountSummaryCards {...staticWidgetProps} />
         <CashFlowChart {...staticWidgetProps} />
+        <SpendingByCategoryChart {...staticWidgetProps} />
       </div>
     </AppShell>
   );

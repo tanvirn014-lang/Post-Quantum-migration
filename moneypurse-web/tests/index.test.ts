@@ -8,3 +8,4 @@ import "./hooks/useDashboardLayout.test.js";
 import "./components/dashboard/DashboardWidget.test.js";
 import "./lib/low-balance.test.js";
 import "./lib/aggregate-cash-flow.test.js";
+import "./lib/aggregate-by-category.test.js";
