@@ -24,8 +24,12 @@ export function SpendingByCategoryChart({
   const postingsQuery = usePostings(DEMO_CUSTOMER_ACCOUNTS.primary, 200);
   const postings = postingsQuery.data ?? [];
   const transactionIds = postings.map((p) => p.transactionId);
-  const { descriptionsByTransactionId, isLoading: descriptionsLoading, isError: descriptionsError } =
-    useTransactionDescriptions(transactionIds);
+  const {
+    descriptionsByTransactionId,
+    isLoading: descriptionsLoading,
+    isError: descriptionsError,
+    refetch: refetchDescriptions,
+  } = useTransactionDescriptions(transactionIds);
 
   const categories = aggregateByCategory(postings, descriptionsByTransactionId);
   const selected = categories.find((c) => c.category === selectedCategory) ?? null;
@@ -45,7 +49,10 @@ export function SpendingByCategoryChart({
       query={{
         isLoading: postingsQuery.isLoading || descriptionsLoading,
         isError: postingsQuery.isError || descriptionsError,
-        refetch: postingsQuery.refetch,
+        refetch: () => {
+          postingsQuery.refetch();
+          refetchDescriptions();
+        },
       }}
     >
       {categories.length === 0 ? (

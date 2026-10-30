@@ -29,5 +29,8 @@ export function useTransactionDescriptions(transactionIds: string[]) {
     descriptionsByTransactionId,
     isLoading: results.some((r) => r.isLoading),
     isError: results.some((r) => r.isError),
+    // A single query's refetch only retries that one transaction - callers that show one
+    // combined error/retry state (DashboardWidget) need to retry every underlying query.
+    refetch: () => Promise.all(results.map((r) => r.refetch())),
   };
 }

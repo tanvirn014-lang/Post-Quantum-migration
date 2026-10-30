@@ -5,6 +5,7 @@ import "./lib/api/ledger-client.test.js";
 import "./lib/mock/categorize.test.js";
 import "./hooks/useAccounts.test.js";
 import "./hooks/useDashboardLayout.test.js";
+import "./hooks/useTransactions.test.js";
 import "./components/dashboard/DashboardWidget.test.js";
 import "./components/dashboard/WidgetErrorBoundary.test.js";
 import "./lib/low-balance.test.js";

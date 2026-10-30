@@ -24,8 +24,12 @@ export function RecentTransactionsWidget({
   const postingsQuery = usePostings(DEMO_CUSTOMER_ACCOUNTS.primary, 200);
   const postings = postingsQuery.data ?? [];
   const transactionIds = postings.map((p) => p.transactionId);
-  const { descriptionsByTransactionId, isLoading: descriptionsLoading, isError: descriptionsError } =
-    useTransactionDescriptions(transactionIds);
+  const {
+    descriptionsByTransactionId,
+    isLoading: descriptionsLoading,
+    isError: descriptionsError,
+    refetch: refetchDescriptions,
+  } = useTransactionDescriptions(transactionIds);
 
   const recent = postings.slice(0, RECENT_COUNT);
 
@@ -56,7 +60,10 @@ export function RecentTransactionsWidget({
       query={{
         isLoading: postingsQuery.isLoading || descriptionsLoading,
         isError: postingsQuery.isError || descriptionsError,
-        refetch: postingsQuery.refetch,
+        refetch: () => {
+          postingsQuery.refetch();
+          refetchDescriptions();
+        },
       }}
     >
       {recent.length === 0 ? (
