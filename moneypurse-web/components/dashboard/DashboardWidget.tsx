@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
+import { WidgetErrorBoundary } from "./WidgetErrorBoundary";
 
 export interface DashboardWidgetQueryState {
   isLoading: boolean;
@@ -50,7 +51,7 @@ export function DashboardWidget({ id, title, editMode, hidden, onToggleHidden, q
         </div>
       )}
 
-      {!query.isLoading && !query.isError && children}
+      {!query.isLoading && !query.isError && <WidgetErrorBoundary>{children}</WidgetErrorBoundary>}
     </Card>
   );
 }

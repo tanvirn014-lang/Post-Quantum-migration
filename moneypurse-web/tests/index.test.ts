@@ -6,6 +6,7 @@ import "./lib/mock/categorize.test.js";
 import "./hooks/useAccounts.test.js";
 import "./hooks/useDashboardLayout.test.js";
 import "./components/dashboard/DashboardWidget.test.js";
+import "./components/dashboard/WidgetErrorBoundary.test.js";
 import "./lib/low-balance.test.js";
 import "./lib/aggregate-cash-flow.test.js";
 import "./lib/aggregate-by-category.test.js";

@@ -35,3 +35,26 @@ test("returns one bucket per day for the week period", () => {
   const result = aggregateCashFlow([], "week", new Date("2026-10-30T00:00:00Z"));
   assert.strictEqual(result.length, 7);
 });
+
+test("skips a posting with an invalid createdAt instead of throwing", () => {
+  const now = new Date("2026-10-30T00:00:00Z");
+  const badPosting: Posting = { ...posting("100000", 1, now), createdAt: "not-a-date" };
+  assert.doesNotThrow(() => aggregateCashFlow([badPosting], "week", now));
+  const result = aggregateCashFlow([badPosting], "week", now);
+  assert.strictEqual(
+    result.every((r) => r.income === 0 && r.expense === 0),
+    true,
+  );
+});
+
+test("skips a posting with a non-numeric amountMinorUnits instead of throwing", () => {
+  const now = new Date("2026-10-30T00:00:00Z");
+  const badPosting: Posting = { ...posting("not-a-number", 1, now) };
+  assert.doesNotThrow(() => aggregateCashFlow([badPosting], "week", now));
+});
+
+test("week bucket labels are weekday names, not bare integers", () => {
+  const result = aggregateCashFlow([], "week", new Date("2026-10-30T00:00:00Z"));
+  assert.strictEqual(result[result.length - 1]!.label, "Today");
+  assert.notStrictEqual(result[0]!.label, "6");
+});
