@@ -8,8 +8,18 @@ for the full design.
 
 ## Prerequisites
 
-`ledger-service` must be running separately on port 3000, with demo accounts seeded. (The seed
-step is documented here once Task 5 adds it.)
+`ledger-service` must be running separately on port 3000, with demo accounts seeded:
+
+```bash
+cd ../ledger-service
+docker compose up -d
+DATABASE_URL=postgres://ledger:ledger@localhost:5432/ledger npm run migrate
+npm run build
+DATABASE_URL=postgres://ledger:ledger@localhost:5432/ledger node dist/scripts/seed-demo.js
+```
+
+Copy the printed `primary`/`savings` account ids into `lib/demo-accounts.ts` (already done for
+this checkout's local Postgres; re-run and re-paste if you reset the database).
 
 ## Running it
 
