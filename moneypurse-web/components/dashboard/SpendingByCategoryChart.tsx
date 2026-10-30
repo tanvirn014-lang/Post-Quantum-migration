@@ -30,6 +30,11 @@ export function SpendingByCategoryChart({
   const categories = aggregateByCategory(postings, descriptionsByTransactionId);
   const selected = categories.find((c) => c.category === selectedCategory) ?? null;
 
+  // Recharts' Pie only plots a dataKey whose value is typeof "number" - totalMinorUnits is
+  // deliberately a string everywhere else (the money-as-string convention), so the chart
+  // gets its own numeric major-units field here, same conversion CashFlowChart already does.
+  const chartData = categories.map((c) => ({ ...c, value: Number(c.totalMinorUnits) / 100 }));
+
   return (
     <DashboardWidget
       id="spending"
@@ -50,8 +55,8 @@ export function SpendingByCategoryChart({
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Pie
-                data={categories}
-                dataKey="totalMinorUnits"
+                data={chartData}
+                dataKey="value"
                 nameKey="category"
                 innerRadius={50}
                 outerRadius={80}
@@ -64,15 +69,21 @@ export function SpendingByCategoryChart({
               </Pie>
               <Tooltip
                 contentStyle={{ background: "var(--surface-overlay)", border: "1px solid var(--border-subtle)" }}
-                formatter={(value) => formatCurrency(String(value), "BDT")}
+                formatter={(_value, _name, item) => formatCurrency((item?.payload as { totalMinorUnits?: string })?.totalMinorUnits ?? "0", "BDT")}
               />
             </PieChart>
           </ResponsiveContainer>
           <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
             {categories.map((c, i) => (
-              <li key={c.category} className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full" style={{ background: SLICE_COLORS[i % SLICE_COLORS.length] }} />
-                {c.category}
+              <li key={c.category}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory(c.category)}
+                  className="flex items-center gap-1.5 hover:text-primary"
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ background: SLICE_COLORS[i % SLICE_COLORS.length] }} />
+                  {c.category}
+                </button>
               </li>
             ))}
           </ul>

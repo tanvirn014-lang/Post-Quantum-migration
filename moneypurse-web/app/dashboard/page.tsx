@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentType, ReactNode } from "react";
-import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { AppShell } from "../../components/layout/AppShell";
@@ -47,6 +47,16 @@ export default function DashboardPage() {
   const { order, hidden, reorder, toggleHidden } = useDashboardLayout();
   const [editMode, setEditMode] = useState(false);
 
+  // Without an activation distance, dnd-kit's PointerSensor treats every pointerdown as a
+  // drag attempt and swallows the click that follows (even a plain click with no movement),
+  // which made every button inside a widget (Hide, Freeze, period toggles, ...) unclickable
+  // in edit mode. Requiring 8px of movement before a drag "activates" lets an ordinary click
+  // pass through untouched.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor),
+  );
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -63,7 +73,7 @@ export default function DashboardPage() {
         </Button>
       </div>
       <AlertBanner />
-      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={order}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {order.map((id) => {
