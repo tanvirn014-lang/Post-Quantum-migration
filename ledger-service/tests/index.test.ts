@@ -6,5 +6,6 @@ import "./domain/money.test.js";
 import "./domain/ledger.test.js";
 import "./app/ledger-service.test.js";
 import "./http/api.test.js";
+import "./http/cors.test.js";
 // Skips itself unless DATABASE_URL is set - see the file for how to run it for real.
 import "./adapters/postgres-ledger-store.integration.test.js";
