@@ -11,6 +11,7 @@
     "test": "npm run build:tests && node --test dist-tests/tests/index.test.js"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.105.0",
     "next": "16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0"
