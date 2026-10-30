@@ -7,6 +7,7 @@ import { SpendingByCategoryChart } from "../../components/dashboard/SpendingByCa
 import { SavingsPotsWidget } from "../../components/dashboard/SavingsPotsWidget";
 import { CardManagementWidget } from "../../components/dashboard/CardManagementWidget";
 import { RecentTransactionsWidget } from "../../components/dashboard/RecentTransactionsWidget";
+import { AlertBanner } from "../../components/alerts/AlertBanner";
 
 // Edit-mode/hide wiring (via useDashboardLayout) lands in Task 19; until then every widget
 // gets static defaults (always visible, not in edit mode) so each one can be built and
@@ -16,6 +17,7 @@ const staticWidgetProps = { editMode: false, hidden: false, onToggleHidden: () =
 export default function DashboardPage() {
   return (
     <AppShell>
+      <AlertBanner />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AccountSummaryCards {...staticWidgetProps} />
         <CashFlowChart {...staticWidgetProps} />
