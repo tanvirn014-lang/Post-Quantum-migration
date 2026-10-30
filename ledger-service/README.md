@@ -66,6 +66,19 @@ npm run migrate             # applies migrations/0001_init.sql
 LEDGER_STORE=postgres DATABASE_URL=postgres://ledger:ledger@localhost:5432/ledger npm start
 ```
 
+### CORS
+
+By default the API reflects whatever `Origin` header a browser sends (fine for local
+development, where the frontend runs on an arbitrary port). For a real deployment, set
+`CORS_ORIGIN` to a comma-separated allow-list instead of relying on that default:
+
+```bash
+CORS_ORIGIN=https://app.example.com,https://admin.example.com npm start
+```
+
+Leave it unset in dev; always set it in production. `buildServer`'s `cors` option (used in
+tests) can also take `false` to disable CORS outright.
+
 ## Testing
 
 ```bash
