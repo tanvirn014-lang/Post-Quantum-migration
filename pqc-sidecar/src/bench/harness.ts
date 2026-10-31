@@ -130,8 +130,10 @@ export async function handshakeOnce(port: number, caPem: string, clientGroups: s
         selectedGroup: obs.serverHello?.selectedGroup === undefined ? null : (groupName(obs.serverHello.selectedGroup) ?? `0x${obs.serverHello.selectedGroup.toString(16)}`),
         error: null,
       };
-      // Timing was captured above. Close gracefully so the server finishes its side of the
-      // handshake (and its CPU cost is counted) instead of seeing an abrupt hang-up.
+      // Timing was captured above. The server ends the connection as soon as its side of the handshake
+      // is done (so its CPU cost is counted), and the client waits for that instead of closing first.
+      // Whoever closes first holds the TIME_WAIT entry; if the client did, tens of thousands of runs
+      // would exhaust the client's ephemeral ports (EADDRINUSE) and fail handshakes at random.
       let finished = false;
       const finish = (): void => {
         if (finished) return;
@@ -142,7 +144,6 @@ export async function handshakeOnce(port: number, caPem: string, clientGroups: s
       socket.once("close", finish);
       socket.once("error", finish);
       setTimeout(finish, 250).unref();
-      socket.end();
     });
     socket.once("error", (err) => {
       raw.destroy();

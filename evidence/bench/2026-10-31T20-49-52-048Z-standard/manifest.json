@@ -1,0 +1,95 @@
+{
+  "runId": "2026-10-31T20-49-52-048Z-standard",
+  "startedAt": "2026-10-31T20:49:52.048Z",
+  "timeZone": "Asia/Dhaka",
+  "operator": "HP",
+  "sourceRevision": {
+    "commit": "522678c501e2cd19f0554ed085447f523f92700a",
+    "workingTreeDirty": true
+  },
+  "host": {
+    "os": "win32",
+    "release": "10.0.26200",
+    "version": "Windows 11 Education",
+    "arch": "x64",
+    "cpuModel": "12th Gen Intel(R) Core(TM) i5-12500H",
+    "logicalCores": 16,
+    "totalMemoryMiB": 16016
+  },
+  "runtime": {
+    "node": "26.4.0",
+    "openssl": "3.5.7",
+    "v8": "14.6.202.34-node.21"
+  },
+  "tls": {
+    "implementation": "node:tls on OpenSSL (X25519MLKEM768 and X25519 groups)",
+    "supportedGroupsUnderTest": [
+      "X25519",
+      "X25519MLKEM768"
+    ],
+    "minVersion": "TLSv1.3",
+    "certificateSignature": "ECDSA P-256 with SHA-256 (classical; identical in both conditions)",
+    "resumption": "disabled: every handshake is a full handshake (no session tickets, no reuse)"
+  },
+  "topology": {
+    "networkMode": "loopback (127.0.0.1) on a single host",
+    "serverProcess": "separate Node.js child process",
+    "clientProcess": "harness process",
+    "containers": "none"
+  },
+  "dependencies": {
+    "@peculiar/x509": "1.14.3",
+    "pino": "9.14.0",
+    "zod": "4.6.7",
+    "typescript": "5.6.3"
+  },
+  "workload": {
+    "preset": "standard",
+    "label": "^dev^ laptop,^ loopback,^ standard^ preset^",
+    "runs": 30,
+    "handshakesPerRunPerCondition": 300,
+    "warmupHandshakesPerCondition": 100,
+    "throughputConcurrency": [
+      1,
+      4,
+      16
+    ],
+    "throughputHandshakesPerPoint": 300,
+    "throughputRuns": 3,
+    "connectionReuse": "none (new TCP connection and full handshake every time)",
+    "applicationData": "none",
+    "serverGroupList": "X25519MLKEM768:X25519 (identical for both conditions)",
+    "serverListeners": "32 loopback ports, identical configuration, handshakes rotate over them round-robin (avoids ephemeral-port exhaustion on one destination port)"
+  },
+  "measurement": {
+    "timer": "performance.now() (monotonic)",
+    "handshakeTimeStart": "after TCP connect completes",
+    "handshakeTimeEnd": "TLS secureConnect event",
+    "interleaving": "classical-first on even runs, hybrid-first on odd runs",
+    "statistics": "linear-interpolated percentiles (R-7); bootstrap CIs resample independent RUNS (2000 resamples, recorded seed), not individual handshakes"
+  },
+  "capture": {
+    "packetCapture": "none retained; handshake sizes come from the plaintext ClientHello/ServerHello record lengths observed on the socket",
+    "handshakeByteSource": "wire bytes counted by the tap stream up to handshake completion, both directions"
+  },
+  "caveats": [
+    "Single host over loopback: latencies are not representative of any production or partner network.",
+    "Client and server share one machine's CPU; contention is possible and run-to-run variation is reported, not hidden.",
+    "Handshake timing excludes TCP connection setup and application data.",
+    "Per-handshake CPU time comes from process.cpuUsage(), whose resolution is coarse on some platforms (notably Windows); treat CPU figures as averages over many handshakes, noisy at small sample sizes.",
+    "The results characterise this implementation (Node.js/OpenSSL) in this environment only."
+  ],
+  "validity": {
+    "valid": true,
+    "problems": []
+  },
+  "outputs": {
+    "directory": "C:\\Users\\HP\\AppData\\Local\\Claude-Data\\anthropicpbc.claude_fnn82j28hfe8t\\scratch-workspaces\\aa098153-5a98-49d3-95ef-26c2babf85e6\\157622e8-87f8-4d11-ae7f-5080983dd929\\scratch-2026-10-29-5f7cc5\\evidence\\bench\\2026-10-31T20-49-52-048Z-standard",
+    "sha256": {
+      "handshakes.csv": "082bf7332997a4a34e85dbb67774450360c4823e06f1257cdf3e75183ce1a745",
+      "throughput.csv": "8081c988cf53ead32b79c247cb226c5024057717c591e870ef5a653f06527ee9",
+      "summary.json": "8b4b9b7eef0f315c06a5628a87f672e25c42605cc5335dd605b597e65a1b9bcd",
+      "report.md": "2a485af0884dc6de2594ab21b84d88e47320349fc9ba61d75aa2b4ab465e8a30"
+    }
+  }
+}

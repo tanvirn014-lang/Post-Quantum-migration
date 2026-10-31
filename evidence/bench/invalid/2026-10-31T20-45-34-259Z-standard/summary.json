@@ -1,0 +1,201 @@
+{
+  "latency": {
+    "classical": {
+      "attempted": 9000,
+      "succeeded": 8993,
+      "failed": 7,
+      "configurationMismatches": 0,
+      "latencyMs": {
+        "n": 8993,
+        "mean": 1.3737212387412767,
+        "stddev": 0.3348290630182018,
+        "min": 1.0751999999993131,
+        "median": 1.3070999999999913,
+        "p95": 1.8307200000002921,
+        "p99": 2.3671680000007465,
+        "max": 14.099500000000262
+      },
+      "perRunMedianMs": [
+        1.3970000000000482,
+        1.3169499999999061,
+        1.277599999999893,
+        1.2746999999999389,
+        1.2737499999998363,
+        1.3753999999998996,
+        1.4950500000004467,
+        1.2479999999995925,
+        1.356699999999364,
+        1.3693500000008498,
+        1.3203499999999622,
+        1.419849999998405,
+        1.3241000000016356,
+        1.2996000000002823,
+        1.2517000000007101,
+        1.2705999999998312,
+        1.2286000000003696,
+        1.2045500000003813,
+        1.2094500000002881,
+        1.204200000000128,
+        1.2048999999988155,
+        1.334499999999025,
+        1.351200000000972,
+        1.3549000000020897,
+        1.3338999999978114,
+        1.3716000000022177,
+        1.3192500000004657,
+        1.3263000000042666,
+        1.3012000000016997,
+        1.2770999999993364
+      ],
+      "medianOfRunMedians": {
+        "estimate": 1.318100000000186,
+        "lower": 1.2758999999996377,
+        "upper": 1.334499999999025,
+        "level": 0.95,
+        "resamples": 2000,
+        "seed": 20260801
+      },
+      "clientHelloRecordBytes": 235,
+      "serverHelloRecordBytes": 127,
+      "bytesSentPerHandshake": 235,
+      "bytesReceivedPerHandshake": 831.9879906594017
+    },
+    "hybrid": {
+      "attempted": 9000,
+      "succeeded": 8989,
+      "failed": 11,
+      "configurationMismatches": 0,
+      "latencyMs": {
+        "n": 8989,
+        "mean": 1.535955656913991,
+        "stddev": 0.49161620099127323,
+        "min": 1.2017000000014377,
+        "median": 1.460399999999936,
+        "p95": 1.95882000000056,
+        "p99": 2.44746000000072,
+        "max": 18.38890000000174
+      },
+      "perRunMedianMs": [
+        1.48920000000021,
+        1.4551500000000033,
+        1.4081500000002052,
+        1.4153000000005704,
+        1.4774499999998625,
+        1.540849999999864,
+        1.5890499999995882,
+        1.3953500000006898,
+        1.4857499999998254,
+        1.5975499999995009,
+        1.597500000000764,
+        1.5666999999994005,
+        1.4572000000007392,
+        1.4657499999993888,
+        1.4241000000001804,
+        1.3668499999985215,
+        1.4180500000020402,
+        1.3887500000000728,
+        1.3911000000007334,
+        1.3796000000002095,
+        1.3799500000004628,
+        1.3866499999985535,
+        1.479700000003504,
+        1.490799999995943,
+        1.500400000004447,
+        1.4791000000004715,
+        1.4963500000012573,
+        1.5059499999988475,
+        1.4780499999978929,
+        1.4607499999983702
+      ],
+      "medianOfRunMedians": {
+        "estimate": 1.4715999999996257,
+        "lower": 1.4197000000003754,
+        "upper": 1.4874750000000176,
+        "level": 0.95,
+        "resamples": 2000,
+        "seed": 20260801
+      },
+      "clientHelloRecordBytes": 1411,
+      "serverHelloRecordBytes": 1215,
+      "bytesSentPerHandshake": 1411,
+      "bytesReceivedPerHandshake": 1909.9955501168095
+    },
+    "hybridMinusClassicalMedianMs": {
+      "estimate": 0.15582499999978836,
+      "lower": 0.1395166666667952,
+      "upper": 0.1723974999997166,
+      "level": 0.95,
+      "resamples": 2000,
+      "seed": 20260801
+    },
+    "h2Verdict": "hybrid-slower",
+    "h1": {
+      "extraClientHelloBytes": 1176,
+      "extraServerHelloBytes": 1088,
+      "extraBytesSent": 1176,
+      "extraBytesReceived": 1078.0075594574078
+    }
+  },
+  "throughput": [
+    {
+      "concurrency": 1,
+      "condition": "classical",
+      "runs": 3,
+      "handshakesPerSecondMedian": 208.87130749469904,
+      "clientCpuMsPerHandshakeMedian": 4.583333333333333,
+      "serverCpuMsPerHandshakeMedian": 0.73,
+      "serverRssMiBMedian": 101.88671875,
+      "failures": 7
+    },
+    {
+      "concurrency": 1,
+      "condition": "hybrid",
+      "runs": 3,
+      "handshakesPerSecondMedian": 208.87968425747002,
+      "clientCpuMsPerHandshakeMedian": 4.376666666666667,
+      "serverCpuMsPerHandshakeMedian": 0.8833333333333333,
+      "serverRssMiBMedian": 90.9375,
+      "failures": 0
+    },
+    {
+      "concurrency": 4,
+      "condition": "classical",
+      "runs": 3,
+      "handshakesPerSecondMedian": 221.46603873662386,
+      "clientCpuMsPerHandshakeMedian": 4.476666666666667,
+      "serverCpuMsPerHandshakeMedian": 0.5766666666666667,
+      "serverRssMiBMedian": 93.8828125,
+      "failures": 0
+    },
+    {
+      "concurrency": 4,
+      "condition": "hybrid",
+      "runs": 3,
+      "handshakesPerSecondMedian": 221.93631892426595,
+      "clientCpuMsPerHandshakeMedian": 4.426666666666667,
+      "serverCpuMsPerHandshakeMedian": 0.9366666666666666,
+      "serverRssMiBMedian": 96.7890625,
+      "failures": 0
+    },
+    {
+      "concurrency": 16,
+      "condition": "classical",
+      "runs": 3,
+      "handshakesPerSecondMedian": 126.28814965044732,
+      "clientCpuMsPerHandshakeMedian": 7.713333333333333,
+      "serverCpuMsPerHandshakeMedian": 1.1466666666666667,
+      "serverRssMiBMedian": 99.21484375,
+      "failures": 1
+    },
+    {
+      "concurrency": 16,
+      "condition": "hybrid",
+      "runs": 3,
+      "handshakesPerSecondMedian": 223.531504194905,
+      "clientCpuMsPerHandshakeMedian": 4.116666666666666,
+      "serverCpuMsPerHandshakeMedian": 0.78,
+      "serverRssMiBMedian": 99.4765625,
+      "failures": 3
+    }
+  ]
+}
