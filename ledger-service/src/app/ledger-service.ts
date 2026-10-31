@@ -1,5 +1,5 @@
 import type { Account, Posting, PostingInput, Transaction, TransactionInput } from "../domain/ledger.js";
-import type { CreateAccountInput, LedgerStore } from "../ports/ledger-store.js";
+import type { CreateAccountInput, LedgerStore, ListAccountsOptions } from "../ports/ledger-store.js";
 
 export interface TransferInput {
   idempotencyKey: string;
@@ -9,6 +9,7 @@ export interface TransferInput {
   currency: string;
   description: string;
   metadata?: Record<string, unknown>;
+  context?: Record<string, unknown>;
 }
 
 /**
@@ -29,6 +30,10 @@ export class LedgerService {
     return this.store.getAccount(accountId);
   }
 
+  listAccounts(opts?: ListAccountsOptions): Promise<Account[]> {
+    return this.store.listAccounts(opts);
+  }
+
   postTransaction(input: TransactionInput): Promise<Transaction> {
     return this.store.postTransaction(input);
   }
@@ -43,6 +48,7 @@ export class LedgerService {
       description: params.description,
       postings,
       ...(params.metadata !== undefined ? { metadata: params.metadata } : {}),
+      ...(params.context !== undefined ? { context: params.context } : {}),
     });
   }
 

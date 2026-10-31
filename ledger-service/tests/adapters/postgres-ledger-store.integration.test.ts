@@ -2,9 +2,8 @@ import { after, before, beforeEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
-import { createPool } from "../../src/adapters/postgres/db.js";
-import { applyMigrations } from "../../src/adapters/postgres/migrate.js";
 import { PostgresLedgerStore } from "../../src/adapters/postgres/ledger-store.js";
+import { INTEGRATION_DATABASE_URL, newCustomerId, resetTestDatabase, setupTestDatabase } from "../helpers/pg-test-db.js";
 import {
   AccountNotFoundError,
   CurrencyMismatchError,
@@ -17,12 +16,13 @@ import {
  * database-level balanced-transaction trigger. The in-memory store (tests/app/ledger-service.test.ts)
  * proves the business logic; this proves the Postgres adapter actually implements it correctly.
  *
- * Requires a running Postgres reachable at DATABASE_URL (see docker-compose.yml):
+ * Requires a running Postgres reachable at DATABASE_URL (see docker-compose.yml). The tests use
+ * their own `ledger_test` database on that server, so the application's data is never touched:
  *   docker compose up -d
  *   DATABASE_URL=postgres://ledger:ledger@localhost:5432/ledger npm test
  * Skipped automatically otherwise.
  */
-const DATABASE_URL = process.env["DATABASE_URL"];
+const DATABASE_URL = INTEGRATION_DATABASE_URL;
 
 describe(
   "PostgresLedgerStore (integration)",
@@ -32,12 +32,11 @@ describe(
     let store: PostgresLedgerStore;
 
     before(async () => {
-      pool = createPool();
-      await applyMigrations(pool);
+      pool = await setupTestDatabase();
     });
 
     beforeEach(async () => {
-      await pool.query("TRUNCATE postings, transactions, accounts RESTART IDENTITY CASCADE");
+      await resetTestDatabase(pool);
       store = new PostgresLedgerStore(pool);
     });
 
@@ -46,8 +45,8 @@ describe(
     });
 
     async function fundedAccount(amount: bigint, currency = "BDT") {
-      const source = await store.createAccount({ ownerCustomerId: randomUUID(), currency, allowOverdraft: true });
-      const dest = await store.createAccount({ ownerCustomerId: randomUUID(), currency });
+      const source = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency, allowOverdraft: true });
+      const dest = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency });
       await store.postTransaction({
         idempotencyKey: `fund-${dest.id}`,
         description: "test funding",
@@ -60,7 +59,7 @@ describe(
     }
 
     it("persists an account with a zero starting balance", async () => {
-      const account = await store.createAccount({ ownerCustomerId: randomUUID(), currency: "bdt" });
+      const account = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "bdt" });
       assert.strictEqual(account.balanceMinorUnits, 0n);
       assert.strictEqual(account.currency, "BDT");
 
@@ -70,7 +69,7 @@ describe(
 
     it("moves money between two accounts inside one database transaction", async () => {
       const from = await fundedAccount(10_000n);
-      const to = await store.createAccount({ ownerCustomerId: randomUUID(), currency: "BDT" });
+      const to = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "BDT" });
 
       const transaction = await store.postTransaction({
         idempotencyKey: randomUUID(),
@@ -90,7 +89,7 @@ describe(
 
     it("rolls back the whole transaction when an account would be overdrawn", async () => {
       const from = await fundedAccount(1_000n);
-      const to = await store.createAccount({ ownerCustomerId: randomUUID(), currency: "BDT" });
+      const to = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "BDT" });
 
       await assert.rejects(
         () =>
@@ -111,7 +110,7 @@ describe(
 
     it("replays an idempotent retry via the unique-constraint path instead of double-posting", async () => {
       const from = await fundedAccount(10_000n);
-      const to = await store.createAccount({ ownerCustomerId: randomUUID(), currency: "BDT" });
+      const to = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "BDT" });
       const idempotencyKey = randomUUID();
       const request = {
         idempotencyKey,
@@ -131,7 +130,7 @@ describe(
 
     it("rejects reusing an idempotency key with a different payload", async () => {
       const from = await fundedAccount(10_000n);
-      const to = await store.createAccount({ ownerCustomerId: randomUUID(), currency: "BDT" });
+      const to = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "BDT" });
       const idempotencyKey = randomUUID();
 
       await store.postTransaction({
@@ -158,7 +157,7 @@ describe(
     });
 
     it("rejects a posting against an unknown account", async () => {
-      const to = await store.createAccount({ ownerCustomerId: randomUUID(), currency: "BDT" });
+      const to = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "BDT" });
       await assert.rejects(
         () =>
           store.postTransaction({
@@ -175,7 +174,7 @@ describe(
 
     it("rejects a posting whose currency does not match the account's currency", async () => {
       const from = await fundedAccount(10_000n, "BDT");
-      const usdAccount = await store.createAccount({ ownerCustomerId: randomUUID(), currency: "USD" });
+      const usdAccount = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "USD" });
 
       await assert.rejects(
         () =>
@@ -192,8 +191,8 @@ describe(
     });
 
     it("the database trigger rejects an unbalanced transaction written outside the application layer", async () => {
-      const a = await store.createAccount({ ownerCustomerId: randomUUID(), currency: "BDT", allowOverdraft: true });
-      const b = await store.createAccount({ ownerCustomerId: randomUUID(), currency: "BDT" });
+      const a = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "BDT", allowOverdraft: true });
+      const b = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "BDT" });
 
       const client = await pool.connect();
       try {

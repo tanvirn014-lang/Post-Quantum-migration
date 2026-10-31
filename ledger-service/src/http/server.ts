@@ -1,44 +1,79 @@
-import Fastify, { type FastifyInstance } from "fastify";
+import { randomUUID } from "node:crypto";
+import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
-import type { LedgerService } from "../app/ledger-service.js";
+import helmet from "@fastify/helmet";
+import rateLimit from "@fastify/rate-limit";
+import Fastify, { type FastifyInstance } from "fastify";
+import type { ServerDeps } from "./deps.js";
+import { errorHandler, notFoundHandler } from "./errors.js";
+import { createGuards } from "./guards.js";
 import { registerAccountRoutes } from "./routes/accounts.js";
+import { registerAuditRoutes } from "./routes/audit.js";
+import { registerAuthRoutes } from "./routes/auth.js";
+import { registerPeopleRoutes } from "./routes/people.js";
 import { registerTransactionRoutes } from "./routes/transactions.js";
 
 export interface BuildServerOptions {
-  /** Defaults to false in tests (quiet output) and pretty-printed otherwise. */
+  /** Defaults to off under NODE_ENV=test (quiet output) and on otherwise. */
   logger?: boolean;
-  /** Fastify's cors `origin` option. Defaults to the CORS_ORIGIN environment variable (a
-   *  comma-separated allow-list) when set, otherwise `true` (reflects any origin) - the web
-   *  frontend is a separate origin, so the browser needs CORS headers to call this API at
-   *  all, but a production deployment should set CORS_ORIGIN rather than rely on that
-   *  wildcard-equivalent default. Pass `false` to disable CORS entirely. */
-  cors?: boolean | string[];
 }
 
-function corsOriginFromEnv(): string[] | undefined {
-  const raw = process.env["CORS_ORIGIN"];
-  if (!raw) return undefined;
-  return raw
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter((origin) => origin.length > 0);
-}
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9._-]{8,64}$/;
 
-export function buildServer(service: LedgerService, opts: BuildServerOptions = {}): FastifyInstance {
-  const loggerEnabled = opts.logger ?? process.env["NODE_ENV"] !== "test";
-  const corsOrigin = opts.cors ?? corsOriginFromEnv() ?? true;
+export function buildServer(deps: ServerDeps, opts: BuildServerOptions = {}): FastifyInstance {
+  const { config } = deps;
+  const loggerEnabled = opts.logger ?? config.nodeEnv !== "test";
+
   const app = Fastify({
-    logger: loggerEnabled ? { transport: { target: "pino-pretty" } } : false,
+    bodyLimit: 100 * 1024,
+    // Honour a well-formed caller-supplied id so a request can be traced across services.
+    genReqId: (req) => {
+      const supplied = req.headers["x-request-id"];
+      return typeof supplied === "string" && REQUEST_ID_PATTERN.test(supplied) ? supplied : randomUUID();
+    },
+    logger: loggerEnabled
+      ? {
+          level: process.env["LOG_LEVEL"] ?? "info",
+          redact: ["req.headers.authorization", "req.headers.cookie", 'res.headers["set-cookie"]'],
+          ...(config.nodeEnv === "development" ? { transport: { target: "pino-pretty" } } : {}),
+        }
+      : false,
   });
 
-  if (corsOrigin !== false) {
-    app.register(cors, { origin: corsOrigin });
-  }
+  app.decorateRequest("authUser", null);
+  app.setErrorHandler(errorHandler);
+  app.setNotFoundHandler(notFoundHandler);
+  app.addHook("onSend", async (req, reply) => {
+    void reply.header("x-request-id", req.id);
+  });
+
+  app.register(helmet, { crossOriginResourcePolicy: { policy: "same-site" } });
+  app.register(cors, {
+    origin: config.corsOrigins,
+    credentials: true,
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["authorization", "content-type", "idempotency-key", "x-request-id"],
+    exposedHeaders: ["x-request-id"],
+    maxAge: 600,
+  });
+  app.register(cookie);
+  app.register(rateLimit, {
+    global: true,
+    max: config.rateLimitMax,
+    timeWindow: "1 minute",
+    errorResponseBuilder: () => Object.assign(new Error("rate limited"), { statusCode: 429 }),
+  });
+
+  const guards = createGuards(deps.identity, deps.audit);
+  const routeDeps = { ...deps, guards };
 
   app.get("/healthz", async () => ({ status: "ok" }));
 
-  app.register(registerAccountRoutes(service));
-  app.register(registerTransactionRoutes(service));
+  app.register(registerAuthRoutes(routeDeps));
+  app.register(registerPeopleRoutes(routeDeps));
+  app.register(registerAccountRoutes(routeDeps));
+  app.register(registerTransactionRoutes(routeDeps));
+  app.register(registerAuditRoutes(routeDeps));
 
   return app;
 }

@@ -1,15 +1,16 @@
 import type pg from "pg";
 import { assertAccountsPostable, assertBalanced, assertSufficientFunds, computeNewBalances } from "../../domain/ledger.js";
-import type { Account, AccountStatus, Posting, Transaction, TransactionInput } from "../../domain/ledger.js";
+import type { Account, AccountKind, AccountStatus, Posting, Transaction, TransactionInput } from "../../domain/ledger.js";
 import { IdempotencyKeyReusedError } from "../../domain/errors.js";
 import { hashTransactionRequest } from "../../app/idempotency.js";
 import { newAccountId, newPostingId, newTransactionId } from "../../domain/ids.js";
-import type { CreateAccountInput, LedgerStore } from "../../ports/ledger-store.js";
+import type { CreateAccountInput, LedgerStore, ListAccountsOptions } from "../../ports/ledger-store.js";
 
 interface AccountRow {
   id: string;
   owner_customer_id: string;
   currency: string;
+  kind: AccountKind;
   status: AccountStatus;
   balance_minor_units: string;
   allow_overdraft: boolean;
@@ -40,6 +41,7 @@ function mapAccountRow(row: AccountRow): Account {
     id: row.id,
     ownerCustomerId: row.owner_customer_id,
     currency: row.currency,
+    kind: row.kind,
     status: row.status,
     balanceMinorUnits: BigInt(row.balance_minor_units),
     allowOverdraft: row.allow_overdraft,
@@ -85,10 +87,16 @@ export class PostgresLedgerStore implements LedgerStore {
 
   async createAccount(input: CreateAccountInput): Promise<Account> {
     const { rows } = await this.pool.query<AccountRow>(
-      `INSERT INTO accounts (id, owner_customer_id, currency, allow_overdraft)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO accounts (id, owner_customer_id, currency, allow_overdraft, kind)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [newAccountId(), input.ownerCustomerId, input.currency.toUpperCase(), input.allowOverdraft ?? false],
+      [
+        newAccountId(),
+        input.ownerCustomerId,
+        input.currency.toUpperCase(),
+        input.allowOverdraft ?? false,
+        input.kind ?? "current",
+      ],
     );
     return mapAccountRow(rows[0]!);
   }
@@ -96,6 +104,17 @@ export class PostgresLedgerStore implements LedgerStore {
   async getAccount(accountId: string): Promise<Account | null> {
     const { rows } = await this.pool.query<AccountRow>("SELECT * FROM accounts WHERE id = $1", [accountId]);
     return rows[0] ? mapAccountRow(rows[0]) : null;
+  }
+
+  async listAccounts(opts?: ListAccountsOptions): Promise<Account[]> {
+    const { rows } = await this.pool.query<AccountRow>(
+      `SELECT * FROM accounts
+       WHERE ($1::uuid IS NULL OR owner_customer_id = $1::uuid)
+       ORDER BY created_at, id
+       LIMIT $2`,
+      [opts?.customerId ?? null, opts?.limit ?? 100],
+    );
+    return rows.map(mapAccountRow);
   }
 
   async postTransaction(input: TransactionInput): Promise<Transaction> {
@@ -123,7 +142,13 @@ export class PostgresLedgerStore implements LedgerStore {
           `INSERT INTO transactions (id, idempotency_key, request_hash, description, metadata)
            VALUES ($1, $2, $3, $4, $5)
            RETURNING *`,
-          [newTransactionId(), input.idempotencyKey, requestHash, input.description, JSON.stringify(input.metadata ?? {})],
+          [
+            newTransactionId(),
+            input.idempotencyKey,
+            requestHash,
+            input.description,
+            JSON.stringify({ ...(input.metadata ?? {}), ...(input.context ? { context: input.context } : {}) }),
+          ],
         );
         transactionRow = result.rows[0]!;
       } catch (err) {

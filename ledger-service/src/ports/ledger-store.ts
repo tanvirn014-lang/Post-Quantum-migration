@@ -1,9 +1,15 @@
-import type { Account, Posting, Transaction, TransactionInput } from "../domain/ledger.js";
+import type { Account, AccountKind, Posting, Transaction, TransactionInput } from "../domain/ledger.js";
 
 export interface CreateAccountInput {
   ownerCustomerId: string;
   currency: string;
   allowOverdraft?: boolean;
+  kind?: AccountKind;
+}
+
+export interface ListAccountsOptions {
+  customerId?: string;
+  limit?: number;
 }
 
 /**
@@ -14,6 +20,7 @@ export interface CreateAccountInput {
 export interface LedgerStore {
   createAccount(input: CreateAccountInput): Promise<Account>;
   getAccount(accountId: string): Promise<Account | null>;
+  listAccounts(opts?: ListAccountsOptions): Promise<Account[]>;
 
   /**
    * Posts a balanced transaction atomically: locks every account referenced, checks

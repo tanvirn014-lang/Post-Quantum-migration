@@ -5,7 +5,13 @@
 import "./domain/money.test.js";
 import "./domain/ledger.test.js";
 import "./app/ledger-service.test.js";
+import "./identity/crypto.test.js";
+import "./audit/chain.test.js";
 import "./http/api.test.js";
+import "./http/auth.test.js";
+import "./http/rbac.test.js";
+import "./http/audit.test.js";
 import "./http/cors.test.js";
-// Skips itself unless DATABASE_URL is set - see the file for how to run it for real.
+// Skip themselves unless a Postgres server is reachable - see the files for how to run them.
 import "./adapters/postgres-ledger-store.integration.test.js";
+import "./adapters/postgres-identity-audit.integration.test.js";

@@ -10,6 +10,7 @@ export function toAccountDTO(account: Account) {
     id: account.id,
     ownerCustomerId: account.ownerCustomerId,
     currency: account.currency,
+    kind: account.kind,
     status: account.status,
     balanceMinorUnits: account.balanceMinorUnits.toString(),
     allowOverdraft: account.allowOverdraft,

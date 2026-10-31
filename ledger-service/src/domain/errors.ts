@@ -70,3 +70,9 @@ export class TransactionNotFoundError extends DomainError {
     super(`Transaction ${transactionId} does not exist`, "TRANSACTION_NOT_FOUND");
   }
 }
+
+export class SameAccountTransferError extends DomainError {
+  constructor() {
+    super("Source and destination accounts must differ", "SAME_ACCOUNT_TRANSFER");
+  }
+}

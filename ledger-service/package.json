@@ -6,15 +6,20 @@
   "private": true,
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/src/index.js",
-    "dev": "node --watch dist/src/index.js",
+    "start": "node --env-file-if-exists=.env dist/src/index.js",
+    "dev": "node --env-file-if-exists=.env --watch dist/src/index.js",
     "test": "tsc -p tsconfig.json && node --test dist/tests/index.test.js",
     "lint": "tsc --noEmit -p tsconfig.json",
-    "migrate": "npm run build && node dist/src/adapters/postgres/migrate.js"
+    "migrate": "npm run build && node --env-file-if-exists=.env dist/src/adapters/postgres/migrate.js",
+    "seed": "npm run build && node --env-file-if-exists=.env dist/scripts/seed-demo.js"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.1.5",
     "@fastify/cors": "^11.3.1",
+    "@fastify/helmet": "^13.2.0",
+    "@fastify/rate-limit": "^10.3.0",
     "fastify": "5.12.7",
+    "jose": "^6.2.14",
     "pg": "8.13.1",
     "pino-pretty": "11.2.2",
     "zod": "4.6.7"

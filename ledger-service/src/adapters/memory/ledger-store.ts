@@ -3,7 +3,7 @@ import { newAccountId, newPostingId, newTransactionId } from "../../domain/ids.j
 import type { Account, Posting, Transaction, TransactionInput } from "../../domain/ledger.js";
 import { IdempotencyKeyReusedError } from "../../domain/errors.js";
 import { hashTransactionRequest } from "../../app/idempotency.js";
-import type { CreateAccountInput, LedgerStore } from "../../ports/ledger-store.js";
+import type { CreateAccountInput, LedgerStore, ListAccountsOptions } from "../../ports/ledger-store.js";
 
 /**
  * In-process implementation of LedgerStore. Node is single-threaded, so there is no real
@@ -22,6 +22,7 @@ export class MemoryLedgerStore implements LedgerStore {
       id: newAccountId(),
       ownerCustomerId: input.ownerCustomerId,
       currency: input.currency.toUpperCase(),
+      kind: input.kind ?? "current",
       status: "active",
       balanceMinorUnits: 0n,
       allowOverdraft: input.allowOverdraft ?? false,
@@ -34,6 +35,13 @@ export class MemoryLedgerStore implements LedgerStore {
   async getAccount(accountId: string): Promise<Account | null> {
     const account = this.accounts.get(accountId);
     return account ? { ...account } : null;
+  }
+
+  async listAccounts(opts?: ListAccountsOptions): Promise<Account[]> {
+    const all = [...this.accounts.values()]
+      .filter((a) => opts?.customerId === undefined || a.ownerCustomerId === opts.customerId)
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
+    return all.slice(0, opts?.limit ?? 100).map((a) => ({ ...a }));
   }
 
   async postTransaction(input: TransactionInput): Promise<Transaction> {
@@ -62,7 +70,7 @@ export class MemoryLedgerStore implements LedgerStore {
       description: input.description,
       status: "posted",
       postedAt,
-      metadata: input.metadata ?? {},
+      metadata: { ...(input.metadata ?? {}), ...(input.context ? { context: input.context } : {}) },
     };
     const postings: Posting[] = input.postings.map((p) => ({
       id: newPostingId(),

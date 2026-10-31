@@ -3,5 +3,8 @@ dist/
 dist-tests/
 .env
 .env.local
+.secrets/
 *.log
 .superpowers/
+.claude/
+out.txt

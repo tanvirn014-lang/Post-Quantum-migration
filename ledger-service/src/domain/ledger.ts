@@ -8,11 +8,13 @@ import {
 } from "./errors.js";
 
 export type AccountStatus = "active" | "frozen" | "closed";
+export type AccountKind = "current" | "savings" | "settlement";
 
 export interface Account {
   id: string;
   ownerCustomerId: string;
   currency: string;
+  kind: AccountKind;
   status: AccountStatus;
   /** Running balance in minor units, maintained transactionally by the ledger service. */
   balanceMinorUnits: bigint;
@@ -41,7 +43,15 @@ export interface TransactionInput {
   idempotencyKey: string;
   description: string;
   postings: PostingInput[];
+  /** Caller-supplied descriptive data. Part of the idempotency request hash. */
   metadata?: Record<string, unknown>;
+  /**
+   * Server-attested provenance (acting user, channel, correlation id). Stored with the
+   * transaction in the same database transaction as the postings, but deliberately excluded
+   * from the idempotency request hash: a retry of the same request arrives with a new
+   * correlation id and must still replay, not conflict.
+   */
+  context?: Record<string, unknown>;
 }
 
 export type TransactionStatus = "posted" | "reversed";
