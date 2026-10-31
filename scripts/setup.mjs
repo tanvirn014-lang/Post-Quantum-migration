@@ -30,4 +30,12 @@ writeOnce(
 const example = readFileSync(path.join(ledger, ".env.example"), "utf8");
 writeOnce(path.join(ledger, ".env"), example.replace("# SIDECAR_ASSERTION_SECRET=", `SIDECAR_ASSERTION_SECRET=${hex(32)}`));
 
+// --- security-service -----------------------------------------------------------------
+const security = path.join(root, "security-service");
+const securityExample = readFileSync(path.join(security, ".env.example"), "utf8");
+writeOnce(
+  path.join(security, ".env"),
+  securityExample.replace("# SIDECAR_TOKEN=", `SIDECAR_TOKEN=${hex(32)}`).replace("# BENCH_TOKEN=", `BENCH_TOKEN=${hex(32)}`),
+);
+
 console.log("\nSetup complete. Next: npm run db:up && npm run migrate && npm run seed");

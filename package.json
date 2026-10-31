@@ -3,15 +3,17 @@
   "private": true,
   "description": "Hybrid post-quantum migration architecture for legacy-style digital banking - research prototype. Orchestration scripts only; each service is its own package.",
   "scripts": {
-    "install:all": "npm --prefix ledger-service install && npm --prefix moneypurse-web install",
+    "install:all": "npm --prefix ledger-service install && npm --prefix security-service install && npm --prefix moneypurse-web install",
     "setup": "node scripts/setup.mjs",
     "db:up": "docker compose -f ledger-service/docker-compose.yml up -d",
     "db:down": "docker compose -f ledger-service/docker-compose.yml down",
-    "migrate": "npm --prefix ledger-service run migrate",
+    "migrate": "npm --prefix ledger-service run migrate && npm --prefix security-service run migrate",
     "seed": "npm --prefix ledger-service run seed",
     "dev:ledger": "npm --prefix ledger-service run dev",
     "dev:web": "npm --prefix moneypurse-web run dev -- -p 3100",
     "test:ledger": "npm --prefix ledger-service test",
-    "test:web": "npm --prefix moneypurse-web test"
+    "test:web": "npm --prefix moneypurse-web test",
+    "dev:security": "npm --prefix security-service run dev",
+    "test:security": "npm --prefix security-service test"
   }
 }

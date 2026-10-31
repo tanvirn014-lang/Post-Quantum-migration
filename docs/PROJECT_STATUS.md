@@ -39,10 +39,10 @@ didactic and performs no cryptanalysis.
 | Dashboard: savings pots, card controls, search suggestions | SIM | static fixtures, no backend; to be labelled SIM in the UI |
 | Authentication (scrypt, EdDSA JWT + JWKS, refresh rotation with reuse detection, lockout), RBAC (4 roles), ownership checks, forced password change | LIVE | `ledger-service/tests/http/{auth,rbac,api}.test.ts`, `tests/identity/crypto.test.ts` |
 | Tamper-evident audit log (hash chain, DB-level append-only, verify endpoint) | LIVE | `tests/audit/chain.test.ts`, `tests/adapters/postgres-identity-audit.integration.test.ts` |
-| security-service (peer registry, profiles, telemetry, config audit) | PLANNED | Stage 2 |
+| security-service: peer registry, provider/TLS-profile registry, versioned audited configuration, telemetry ingestion + queries, alert acknowledgement, config audit chain, implementation-status API | LIVE | `security-service/tests/{peers,config,telemetry,audit,access,status}.test.ts` (70 tests, real PostgreSQL) |
 | Hybrid TLS 1.3 sidecar (`X25519MLKEM768`) | PLANNED | Stage 3; feasibility probe passed (see D-02) |
 | Per-peer fallback policy + violation telemetry | PLANNED | Stage 3 |
-| CryptoProvider registry + configuration switching | PLANNED | Stages 2-3 |
+| CryptoProvider registry + configuration switching (control plane; sidecar applies it in Stage 3) | LIVE for the registry and versioned config, PLANNED for enforcement | `security-service/tests/config.test.ts` |
 | CBOM generator + schema validation + ground-truth comparison | PLANNED | Stage 5 |
 | HNDL educational simulator | PLANNED (will be SIM) | Stage 5 |
 | Benchmark harness + environment manifest | PLANNED | Stage 5 |
@@ -101,7 +101,7 @@ didactic and performs no cryptanalysis.
 |---|---|---|
 | 0 | Audit, feasibility probes, plan | done 2026-11-01 |
 | 1 | ledger-service identity, RBAC, audit, hardening | done 2026-11-01 - 127 tests green incl. Postgres integration; live smoke test passed |
-| 2 | security-service | not started |
+| 2 | security-service | done 2026-11-01 - 70 tests green on real PostgreSQL; live cross-service auth smoke test passed |
 | 3 | pqc-sidecar + peer simulator | not started |
 | 4 | partner API integration | not started |
 | 5 | CBOM, HNDL simulator, benchmark | not started |
@@ -125,3 +125,14 @@ Known Stage 1 limitations: audit append is a separate DB transaction from the le
 (at-least-once audit, documented in `audit-service.ts`); tail truncation of the audit chain is only
 detectable against an externally recorded head hash; rate-limit counters are in-memory
 (single-instance).
+
+## 8. Stage 2 notes
+
+- Provider registry marks the Bouncy Castle (BCJSSE) provider PLANNED and non-selectable; only the
+  Node.js TLS (OpenSSL) provider can be configured. Profiles may only reference registered groups.
+- Every configuration change appends a config version and a hash-chained audit entry in ONE
+  database transaction (tested: a rejected duplicate leaves neither behind).
+- Severity of a telemetry event is derived server-side from the decision; a reporter cannot set it.
+- Experiment E support: `GET /v1/crypto/config` reports, per configuration version, how long until
+  a running sidecar reported it applied (`timeToApplyMs`). The sidecar populates this in Stage 3.
+- security-service tests need PostgreSQL (they use an isolated `security_test` database).
