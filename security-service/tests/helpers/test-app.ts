@@ -12,7 +12,8 @@ import type { ServerDeps } from "../../src/http/deps.js";
 import { buildServer } from "../../src/http/server.js";
 
 const BASE_URL = process.env["TEST_DATABASE_URL"] ?? process.env["DATABASE_URL"] ?? "postgres://ledger:ledger@localhost:5432/ledger";
-const TEST_DB = "security_test";
+// Override with TEST_DATABASE_NAME so concurrent checkouts/worktrees never share (and wipe) one database.
+const TEST_DB = process.env["TEST_DATABASE_NAME"] ?? "security_test";
 
 export const SIDECAR_TOKEN = "test-sidecar-token-0123456789abcdef0123456789";
 export const BENCH_TOKEN = "test-bench-token-0123456789abcdef012345678901";
