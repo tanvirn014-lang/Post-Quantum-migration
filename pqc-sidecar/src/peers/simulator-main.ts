@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
 import { z } from "zod";
-import { SCENARIOS, findScenario, runScenario, type ScenarioContext } from "./scenarios.js";
+import { SCENARIOS, ScenarioInputError, findScenario, runScenario, type ScenarioContext, type ScenarioParams } from "./scenarios.js";
 
 const env = z
   .object({
@@ -40,6 +40,22 @@ const authorized = (header: string | undefined): boolean => {
   return Boolean(match) && timingSafeEqual(sha(match![1]!), sha(env.PEER_SIM_TOKEN));
 };
 
+const paramsSchema = z.object({ toAccountId: z.string().min(1).max(64).optional(), amountMinorUnits: z.string().regex(/^\d{1,15}$/).optional(), reference: z.string().min(1).max(100).optional() }).strict();
+
+async function readParams(req: http.IncomingMessage): Promise<ScenarioParams> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += (chunk as Buffer).length;
+    if (size > 4096) throw new ScenarioInputError("request body too large");
+    chunks.push(chunk as Buffer);
+  }
+  if (chunks.length === 0) return {};
+  const parsed = paramsSchema.safeParse(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+  if (!parsed.success) throw new ScenarioInputError("invalid scenario parameters");
+  return parsed.data;
+}
+
 function send(res: http.ServerResponse, status: number, body: unknown): void {
   const text = JSON.stringify(body);
   res.writeHead(status, { "content-type": "application/json", "content-length": Buffer.byteLength(text) });
@@ -58,16 +74,18 @@ const server = http.createServer((req, res) => {
       if (!authorized(req.headers.authorization)) return send(res, 401, { error: { code: "UNAUTHORIZED", message: "Invalid token" } });
 
       if (req.method === "GET" && req.url === "/scenarios") {
-        return send(res, 200, SCENARIOS.map((s) => ({ id: s.id, title: s.title, experiment: s.experiment, description: s.description, expected: s.expected })));
+        return send(res, 200, SCENARIOS.map((s) => ({ id: s.id, title: s.title, experiment: s.experiment, description: s.description, expected: s.expected, requires: s.requires ?? [] })));
       }
       const match = req.method === "POST" ? /^\/scenarios\/([a-z0-9-]+)\/run$/.exec(req.url ?? "") : null;
       if (match) {
         const def = findScenario(match[1]!);
         if (!def) return send(res, 404, { error: { code: "NOT_FOUND", message: "Unknown scenario" } });
-        return send(res, 200, await runScenario(def, await loadContext()));
+        const params = await readParams(req);
+        return send(res, 200, await runScenario(def, { ...(await loadContext()), params }));
       }
       return send(res, 404, { error: { code: "NOT_FOUND", message: "Not found" } });
     } catch (err) {
+      if (err instanceof ScenarioInputError) return send(res, 400, { error: { code: "SCENARIO_INPUT", message: err.message } });
       console.error(err);
       return send(res, 500, { error: { code: "INTERNAL_ERROR", message: "Scenario failed to run" } });
     }

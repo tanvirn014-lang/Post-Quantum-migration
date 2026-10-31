@@ -145,6 +145,11 @@ export class PostgresIdentityStore implements IdentityStore {
     return rows[0] ? mapCustomer(rows[0]) : null;
   }
 
+  async findCustomerByEmail(email: string): Promise<Customer | null> {
+    const { rows } = await this.pool.query<CustomerRow>("SELECT * FROM customers WHERE email = $1", [email]);
+    return rows[0] ? mapCustomer(rows[0]) : null;
+  }
+
   async listCustomers(): Promise<Customer[]> {
     const { rows } = await this.pool.query<CustomerRow>("SELECT * FROM customers ORDER BY created_at, id");
     return rows.map(mapCustomer);

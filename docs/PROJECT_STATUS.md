@@ -43,6 +43,7 @@ didactic and performs no cryptanalysis.
 | Hybrid TLS 1.3 sidecar (`X25519MLKEM768`), mutual TLS, verified negotiated group, signed peer assertion to the core | LIVE | `pqc-sidecar/tests/{wire,sidecar}.test.ts` (91 tests, real TLS handshakes) |
 | Per-peer fallback policy + violation telemetry (experiments B and C scenarios) | LIVE | `pqc-sidecar/tests/{policy,scenarios}.test.ts`; live run recorded in section 9 |
 | Simulated external peers + controlled ClientHello-modification proxy | SIM | `pqc-sidecar/tests/scenarios.test.ts` |
+| Core partner API: sidecar-asserted inbound payments recording the verified TLS key exchange on each ledger transaction | LIVE | `ledger-service/tests/http/partner.test.ts`, `pqc-sidecar/tests/scenarios.test.ts`; live run in section 10 |
 | CryptoProvider registry + configuration switching (control plane; sidecar applies it in Stage 3) | LIVE for the registry and versioned config, PLANNED for enforcement | `security-service/tests/config.test.ts` |
 | CBOM generator + schema validation + ground-truth comparison | PLANNED | Stage 5 |
 | HNDL educational simulator | PLANNED (will be SIM) | Stage 5 |
@@ -104,7 +105,7 @@ didactic and performs no cryptanalysis.
 | 1 | ledger-service identity, RBAC, audit, hardening | done 2026-11-01 - 127 tests green incl. Postgres integration; live smoke test passed |
 | 2 | security-service | done 2026-11-01 - 70 tests green on real PostgreSQL; live cross-service auth smoke test passed |
 | 3 | pqc-sidecar + peer simulator | done 2026-11-01 - 91 sidecar tests; 7 scenarios pass on the live stack |
-| 4 | partner API integration | not started |
+| 4 | partner API integration | done 2026-11-01 - 131 ledger + 94 sidecar tests; live end-to-end payment verified |
 | 5 | CBOM, HNDL simulator, benchmark | not started |
 | 6 | frontend auth + security console | not started |
 | 7 | e2e validation, evidence, docs | not started |
@@ -167,3 +168,22 @@ Verified on this machine (Node v26.4.0, OpenSSL 3.5.7, loopback, single host - n
 
 Live run of all seven scenarios through dashboard API -> simulator -> sidecar -> telemetry (2026-11-01): all PASS,
 sidecar in sync, OpenSSL 3.5.7 reported by the running sidecar.
+
+## 10. Stage 4: end-to-end integration
+
+Flow: simulated peer --(TLS 1.3, mutual TLS)--> pqc-sidecar --(plain HTTP + HMAC-signed assertion)--> ledger-service
+`/partner/v1/*` --> double-entry posting from the partner settlement account to a customer account.
+
+- The core trusts a peer identity or negotiated group **only** through the sidecar's signed assertion (peer, verified
+  key exchange, decision, correlation id, timestamp, bound to method + path, 30 s window). A forged or replayed
+  assertion, an assertion for another path, and an assertion for a rejected connection are all refused (tests).
+- Partners can only *credit* customer accounts (strictly positive amounts); bank-internal settlement accounts look
+  non-existent to them; idempotency keys are scoped per peer; rate limits are per peer.
+- Each posting stores `context = {channel: "partner", peer, tls: {keyExchange, negotiatedGroup, decision}}` in the
+  same database transaction as the postings, and an audit entry (actor role `partner`) carries the sidecar's
+  correlation id, so a customer-visible transaction can be traced to the exact TLS connection record.
+- Live run (2026-11-01): hybrid peer payment -> context `hybrid / X25519MLKEM768`; classical-only peer payment ->
+  `allowed-fallback / classical / X25519`; customer balance +15000; direct call to the core with a forged assertion -> 401.
+- Known limit (by design, proposal section 9): post-quantum protection ends at the sidecar. The sidecar-to-core hop is plain HTTP
+  authenticated by an HMAC, and a caller that can reach the core's port directly can still use the JWT-protected
+  user API; network isolation of the core is a deployment control this prototype does not provide.

@@ -19,6 +19,8 @@ export interface ReceivedRequest {
 
 export interface FakeCore {
   url: URL;
+  /** When set, answers requests instead of the default echo (used to emulate the real partner API). */
+  respond: ((req: ReceivedRequest) => { status: number; body: unknown } | undefined) | undefined;
   requests: ReceivedRequest[];
   /** Set to make the next requests fail like a crashed core. */
   down: boolean;
@@ -27,7 +29,7 @@ export interface FakeCore {
 
 export async function startFakeCore(): Promise<FakeCore> {
   const requests: ReceivedRequest[] = [];
-  const core: FakeCore = { url: new URL("http://127.0.0.1:1"), requests, down: false, close: async () => {} };
+  const core: FakeCore = { url: new URL("http://127.0.0.1:1"), respond: undefined, requests, down: false, close: async () => {} };
   const server = http.createServer((req, res) => {
     const chunks: Buffer[] = [];
     req.on("data", (c: Buffer) => chunks.push(c));
@@ -36,9 +38,11 @@ export async function startFakeCore(): Promise<FakeCore> {
         req.socket.destroy();
         return;
       }
-      requests.push({ method: req.method ?? "", url: req.url ?? "", headers: req.headers, body: Buffer.concat(chunks).toString("utf8") });
-      const body = JSON.stringify({ ok: true, path: req.url });
-      res.writeHead(200, { "content-type": "application/json", "content-length": Buffer.byteLength(body), connection: "keep-alive" });
+      const received: ReceivedRequest = { method: req.method ?? "", url: req.url ?? "", headers: req.headers, body: Buffer.concat(chunks).toString("utf8") };
+      requests.push(received);
+      const custom = core.respond?.(received);
+      const body = JSON.stringify(custom ? custom.body : { ok: true, path: req.url });
+      res.writeHead(custom?.status ?? 200, { "content-type": "application/json", "content-length": Buffer.byteLength(body), connection: "keep-alive" });
       res.end(body);
     });
   });

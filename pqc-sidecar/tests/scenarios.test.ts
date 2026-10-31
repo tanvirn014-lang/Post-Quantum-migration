@@ -1,10 +1,14 @@
 import { afterEach, beforeEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { SCENARIOS, runScenario, type ScenarioContext } from "../src/peers/scenarios.js";
+import { SCENARIOS, ScenarioInputError, runScenario, type ScenarioContext } from "../src/peers/scenarios.js";
+import { verifyAssertion } from "../src/sidecar/assertion.js";
 import { GROUP_X25519, GROUP_X25519_MLKEM768 } from "../src/wire/groups.js";
 import { startTamperProxy } from "../src/peers/tamper-proxy.js";
 import { connectAsPeer, HYBRID_CAPABLE_GROUPS } from "../src/peers/client.js";
-import { startHarness, type Harness } from "./helpers/harness.js";
+import { ASSERTION_SECRET, startHarness, type Harness } from "./helpers/harness.js";
+
+/** Scenarios that need no input; the payment scenarios are covered in their own block. */
+const STANDALONE = SCENARIOS.filter((s) => !s.requires || s.requires.length === 0);
 
 describe("experiment scenarios B and C against a live sidecar", () => {
   let h: Harness;
@@ -29,7 +33,7 @@ describe("experiment scenarios B and C against a live sidecar", () => {
     await h.stop();
   });
 
-  for (const def of SCENARIOS) {
+  for (const def of STANDALONE) {
     it(`${def.id}: peer observes '${def.expected}' under the default profile`, async () => {
       const result = await runScenario(def, ctx);
       assert.strictEqual(result.observed, def.expected, JSON.stringify(result.detail));
@@ -40,9 +44,9 @@ describe("experiment scenarios B and C against a live sidecar", () => {
 
   it("the sidecar's own telemetry agrees with what each peer observed (independent evidence)", async () => {
     const results = [];
-    for (const def of SCENARIOS) results.push(await runScenario(def, ctx));
+    for (const def of STANDALONE) results.push(await runScenario(def, ctx));
     // The sidecar logs a failed handshake a moment after the peer sees it fail.
-    for (let i = 0; i < 40 && h.events.length < SCENARIOS.length; i++) await new Promise((r) => setTimeout(r, 25));
+    for (let i = 0; i < 40 && h.events.length < STANDALONE.length; i++) await new Promise((r) => setTimeout(r, 25));
     const decisions = h.events.map((e) => e.decision).sort();
     assert.deepStrictEqual(decisions, [
       "allowed-fallback",
@@ -75,6 +79,53 @@ describe("experiment scenarios B and C against a live sidecar", () => {
     assert.strictEqual(forbidden.observed, "handshake-failed");
     assert.strictEqual(fallback.passed, true);
     assert.strictEqual(forbidden.passed, true);
+  });
+});
+
+describe("end-to-end payment scenarios (peer -> sidecar -> core)", () => {
+  let h: Harness;
+  let ctx: ScenarioContext;
+  beforeEach(async () => {
+    h = await startHarness();
+    // Emulates the core's partner API: it trusts only the signed assertion and stores what it asserts.
+    h.core.respond = (req) => {
+      const a = verifyAssertion(String(req.headers["x-sidecar-assertion"]), ASSERTION_SECRET, { method: req.method, path: req.url });
+      if (!a) return { status: 401, body: { error: { code: "PARTNER_ASSERTION_INVALID" } } };
+      return { status: 201, body: { id: "txn_test", metadata: { context: { channel: "partner", tls: { keyExchange: a.keyExchange, negotiatedGroup: a.negotiatedGroup, decision: a.decision } } } } };
+    };
+    ctx = {
+      host: "127.0.0.1",
+      port: h.port,
+      caPem: h.pki.ca.certPem,
+      params: { toAccountId: "acc_target", amountMinorUnits: "2500" },
+      identities: { hybridBank: h.peers.hybridBank.identity, legacyPsp: h.peers.legacyPsp.identity, strictBank: h.peers.strictBank.identity, unregistered: h.unregistered, rogue: h.rogue },
+    };
+  });
+  afterEach(async () => {
+    await h.stop();
+  });
+
+  it("a hybrid peer's payment reaches the core with a hybrid assertion, and the result carries the stored TLS facts", async () => {
+    const result = await runScenario(SCENARIOS.find((s) => s.id === "partner-payment-hybrid")!, ctx);
+    assert.strictEqual(result.observed, "allowed-hybrid", JSON.stringify(result.detail));
+    assert.strictEqual(result.passed, true);
+    assert.strictEqual(result.detail.transactionId, "txn_test");
+    assert.strictEqual(result.detail.selectedGroup, "X25519MLKEM768");
+    const forwarded = h.core.requests[0]!;
+    assert.strictEqual(forwarded.url, "/partner/v1/payments");
+    assert.deepStrictEqual(JSON.parse(forwarded.body), { toAccountId: "acc_target", amountMinorUnits: "2500", currency: "BDT", reference: "Simulated partner payment" });
+    assert.ok(forwarded.headers["idempotency-key"]);
+  });
+
+  it("a classical-only peer's payment is accepted as an explicit fallback and recorded as classical", async () => {
+    const result = await runScenario(SCENARIOS.find((s) => s.id === "partner-payment-classical-fallback")!, ctx);
+    assert.strictEqual(result.observed, "allowed-fallback", JSON.stringify(result.detail));
+    assert.strictEqual(result.detail.selectedGroup, "X25519");
+  });
+
+  it("refuses to run without the account to pay", async () => {
+    delete ctx.params;
+    await assert.rejects(runScenario(SCENARIOS.find((s) => s.id === "partner-payment-hybrid")!, ctx), ScenarioInputError);
   });
 });
 

@@ -64,6 +64,11 @@ export class MemoryIdentityStore implements IdentityStore {
     return c ? { ...c } : null;
   }
 
+  async findCustomerByEmail(email: string): Promise<Customer | null> {
+    for (const c of this.customers.values()) if (c.email === email) return { ...c };
+    return null;
+  }
+
   async listCustomers(): Promise<Customer[]> {
     return [...this.customers.values()].map((c) => ({ ...c }));
   }

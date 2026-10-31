@@ -7,6 +7,7 @@ import { PostgresIdentityStore } from "../src/adapters/postgres/identity-store.j
 import { PostgresLedgerStore } from "../src/adapters/postgres/ledger-store.js";
 import { AuditService } from "../src/app/audit-service.js";
 import { PasswordHasher } from "../src/identity/password.js";
+import { PARTNER_CUSTOMER_EMAIL } from "../src/http/routes/partner.js";
 import type { Role } from "../src/identity/roles.js";
 
 /**
@@ -66,6 +67,14 @@ async function main(): Promise<void> {
     const treasuryAccount =
       (await ledger.listAccounts({ customerId: treasury.id })).find((a) => a.kind === "settlement") ??
       (await ledger.createAccount({ ownerCustomerId: treasury.id, currency: "BDT", allowOverdraft: true, kind: "settlement" }));
+
+    // The customer record that owns the account partner payments are drawn from (see src/http/routes/partner.ts).
+    const partnerNetwork =
+      (await identity.findCustomerByEmail(PARTNER_CUSTOMER_EMAIL)) ??
+      (await identity.createCustomer({ fullName: "Partner Network (system)", email: PARTNER_CUSTOMER_EMAIL }));
+    if (!(await ledger.listAccounts({ customerId: partnerNetwork.id })).some((a) => a.kind === "settlement")) {
+      await ledger.createAccount({ ownerCustomerId: partnerNetwork.id, currency: "BDT", allowOverdraft: true, kind: "settlement" });
+    }
 
     for (const c of CUSTOMERS) {
       let customerId = (await identity.listCustomers()).find((x) => x.email === c.email)?.id;

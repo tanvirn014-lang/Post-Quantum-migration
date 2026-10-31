@@ -11,6 +11,7 @@ export interface IdentityStore {
   createCustomer(customer: NewCustomer): Promise<Customer>;
   createStaffUser(user: NewUser): Promise<User>;
   getCustomer(id: string): Promise<Customer | null>;
+  findCustomerByEmail(email: string): Promise<Customer | null>;
   listCustomers(): Promise<Customer[]>;
 
   findUserByEmail(email: string): Promise<User | null>;

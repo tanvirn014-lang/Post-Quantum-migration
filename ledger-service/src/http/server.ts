@@ -10,6 +10,7 @@ import { createGuards } from "./guards.js";
 import { registerAccountRoutes } from "./routes/accounts.js";
 import { registerAuditRoutes } from "./routes/audit.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerPartnerRoutes } from "./routes/partner.js";
 import { registerPeopleRoutes } from "./routes/people.js";
 import { registerTransactionRoutes } from "./routes/transactions.js";
 
@@ -74,6 +75,7 @@ export function buildServer(deps: ServerDeps, opts: BuildServerOptions = {}): Fa
   app.register(registerAccountRoutes(routeDeps));
   app.register(registerTransactionRoutes(routeDeps));
   app.register(registerAuditRoutes(routeDeps));
+  app.register(registerPartnerRoutes(routeDeps));
 
   return app;
 }

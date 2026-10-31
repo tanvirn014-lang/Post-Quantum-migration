@@ -320,6 +320,10 @@ export class IdentityService {
     return this.deps.store.getCustomer(id);
   }
 
+  async findCustomerByEmail(email: string): Promise<Customer | null> {
+    return this.deps.store.findCustomerByEmail(normalizeEmail(email));
+  }
+
   async setUserStatus(actor: User, targetId: string, status: "active" | "disabled", ctx: RequestContext): Promise<PublicUser> {
     if (actor.id === targetId) throw new ForbiddenError("You cannot change your own account status");
     const updated = await this.deps.store.updateUser(targetId, { status });
