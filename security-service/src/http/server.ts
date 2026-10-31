@@ -10,6 +10,7 @@ import { registerCbomRoutes } from "./routes/cbom-routes.js";
 import { registerConfigRoutes } from "./routes/config-routes.js";
 import { registerExperimentRoutes } from "./routes/experiment-routes.js";
 import { registerInternalRoutes } from "./routes/internal-routes.js";
+import { registerResearchRoutes } from "./routes/research-routes.js";
 import { registerTelemetryRoutes } from "./routes/telemetry-routes.js";
 
 export interface BuildServerOptions {
@@ -82,6 +83,7 @@ export function buildServer(deps: ServerDeps, opts: BuildServerOptions = {}): Fa
   app.register(registerTelemetryRoutes(routeDeps));
   app.register(registerCbomRoutes(routeDeps));
   app.register(registerExperimentRoutes(routeDeps));
+  app.register(registerResearchRoutes(routeDeps));
   app.register(registerInternalRoutes(routeDeps));
 
   return app;

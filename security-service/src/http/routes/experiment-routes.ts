@@ -4,7 +4,11 @@ import { DependencyUnavailableError, NotFoundError } from "../../errors.js";
 import type { RouteDeps } from "../deps.js";
 import { requestMeta, requirePrincipal } from "../guards.js";
 
-const runSchema = z.object({ scenarioId: z.string().regex(/^[a-z0-9-]{1,64}$/) });
+// Only the payment scenarios use these; the simulator validates them again.
+const paramsSchema = z
+  .object({ toAccountId: z.uuid().optional(), amountMinorUnits: z.string().regex(/^[1-9]\d{0,14}$/).optional(), reference: z.string().min(1).max(100).optional() })
+  .strict();
+const runSchema = z.object({ scenarioId: z.string().regex(/^[a-z0-9-]{1,64}$/), params: paramsSchema.optional() });
 
 /**
  * Runs the fixed experiment scenarios through the peer simulator, which holds the simulated
@@ -37,9 +41,12 @@ export function registerExperimentRoutes(deps: RouteDeps): FastifyPluginAsync {
     });
 
     app.post("/v1/experiments/run", { preHandler: [guards.authenticate, guards.can("experiments:run")] }, async (req) => {
-      const { scenarioId } = runSchema.parse(req.body);
+      const { scenarioId, params } = runSchema.parse(req.body);
       const principal = requirePrincipal(req);
-      const res = await callSimulator(`/scenarios/${scenarioId}/run`, { method: "POST" });
+      const res = await callSimulator(`/scenarios/${scenarioId}/run`, {
+        method: "POST",
+        ...(params ? { headers: { "content-type": "application/json" }, body: JSON.stringify(params) } : {}),
+      });
       if (res.status === 404) throw new NotFoundError("Scenario");
       if (!res.ok) throw new DependencyUnavailableError("The peer simulator failed to run the scenario.");
       const result = (await res.json()) as { passed?: boolean; observed?: string; expected?: string };
@@ -51,7 +58,7 @@ export function registerExperimentRoutes(deps: RouteDeps): FastifyPluginAsync {
         resourceId: scenarioId,
         outcome: result.passed ? "success" : "failure",
         ...requestMeta(req),
-        details: { expected: result.expected ?? null, observed: result.observed ?? null },
+        details: { expected: result.expected ?? null, observed: result.observed ?? null, ...(params ? { params } : {}) },
       });
       return result;
     });

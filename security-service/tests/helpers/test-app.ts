@@ -32,7 +32,7 @@ export async function setupPool(): Promise<pg.Pool> {
 export async function resetDatabase(pool: pg.Pool): Promise<void> {
   await pool.query("ALTER TABLE audit_events DISABLE TRIGGER USER");
   try {
-    await pool.query("TRUNCATE cbom_comparisons, cbom_documents, cbom_ground_truth, peers, connection_events, sidecar_instances, config_applications, audit_events, config_changes RESTART IDENTITY");
+    await pool.query("TRUNCATE hndl_runs, benchmark_runs, cbom_comparisons, cbom_documents, cbom_ground_truth, peers, connection_events, sidecar_instances, config_applications, audit_events, config_changes RESTART IDENTITY");
   } finally {
     await pool.query("ALTER TABLE audit_events ENABLE TRIGGER USER");
   }

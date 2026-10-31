@@ -124,20 +124,33 @@ export const COMPONENTS: readonly ComponentStatus[] = [
     ],
   },
   {
+    id: "partner-integration",
+    name: "Sidecar-asserted partner payment API",
+    status: "LIVE",
+    summary: "The core accepts partner payments only with a signed sidecar assertion and records the verified key exchange (peer, group, decision) with each transaction.",
+    evidence: ["ledger-service/tests/http/partner.test.ts", "pqc-sidecar/tests/scenarios.test.ts"],
+    limitations: ["The sidecar-to-core hop is plain HTTP on a private network, protected by an HMAC-signed assertion rather than TLS.", "Only credits to customer accounts are accepted; this is not a full payment-network integration."],
+  },
+  {
     id: "hndl-simulator",
     name: "HNDL educational simulator",
-    status: "PLANNED",
-    summary: "Toy capture scenario with supplied secrets.",
-    evidence: [],
-    limitations: ["Didactic only: no quantum computation, no cryptanalysis, no prediction of when a quantum computer will exist."],
+    status: "SIM",
+    summary:
+      "Real X25519 / ML-KEM-768 / HKDF / AES-GCM on throw-away keys: a toy session is captured under a classical and a hybrid key agreement, and a modelled adversary is handed the private half of whatever the chosen assumption declares broken. Includes a Mosca X+Y>Z calculator.",
+    evidence: ["security-service/tests/hndl.test.ts", "security-service/tests/research.test.ts"],
+    limitations: [
+      "Didactic only: no quantum computation, no cryptanalysis of any real key, no prediction of when a quantum computer will exist; the break is an assumption chosen by the user.",
+      "Shows key establishment only; it says nothing about certificates, stored data or other hops.",
+    ],
   },
   {
     id: "benchmark-harness",
     name: "Benchmark harness and environment manifest",
-    status: "PLANNED",
-    summary: "Interleaved classical-versus-hybrid handshake measurements with raw CSV and manifest.",
-    evidence: [],
-    limitations: ["Single host, loopback; results are not production network latency."],
+    status: "LIVE",
+    summary:
+      "Interleaved classical-versus-hybrid TLS 1.3 handshake measurements against a separate server process, with raw per-handshake CSV, bootstrap confidence intervals over runs and an automatically captured environment manifest; results are ingested as immutable evidence.",
+    evidence: ["pqc-sidecar/tests/bench.test.ts", "security-service/tests/research.test.ts"],
+    limitations: ["Single host, loopback; results are not production network latency.", "Measures handshake cost only, not application throughput; the CI is over runs on one machine, not across machines."],
   },
   {
     id: "dashboard",

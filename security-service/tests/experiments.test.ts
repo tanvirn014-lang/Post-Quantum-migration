@@ -11,15 +11,17 @@ describe("experiment runner (peer simulator proxy)", () => {
   let pool: pg.Pool;
   let sim: http.Server;
   let simUrl: string;
-  const calls: { method: string; url: string; auth: string | undefined }[] = [];
+  const calls: { method: string; url: string; auth: string | undefined; body?: string }[] = [];
   let t: TestApp;
   let admin: string;
   let auditor: string;
 
   before(async () => {
     pool = await setupPool();
-    sim = http.createServer((req, res) => {
-      calls.push({ method: req.method ?? "", url: req.url ?? "", auth: req.headers.authorization });
+    sim = http.createServer(async (req, res) => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(chunk as Buffer);
+      calls.push({ method: req.method ?? "", url: req.url ?? "", auth: req.headers.authorization, body: Buffer.concat(chunks).toString("utf8") });
       if (req.headers.authorization !== `Bearer ${SIM_TOKEN}`) {
         res.writeHead(401).end("{}");
         return;
@@ -67,6 +69,20 @@ describe("experiment runner (peer simulator proxy)", () => {
     await run("broken");
     const [event] = (await t.app.inject({ method: "GET", url: "/v1/audit/events?action=experiment.run", headers: t.bearer(auditor) })).json().events;
     assert.strictEqual(event.outcome, "failure");
+  });
+
+  it("forwards validated scenario parameters to the simulator and rejects anything else", async () => {
+    const params = { toAccountId: "11111111-1111-4111-8111-111111111111", amountMinorUnits: "2500", reference: "e2e payment" };
+    const ok = await t.app.inject({ method: "POST", url: "/v1/experiments/run", headers: t.bearer(admin), payload: { scenarioId: "hybrid-peer-hybrid-required", params } });
+    assert.strictEqual(ok.statusCode, 200, ok.body);
+    assert.deepStrictEqual(JSON.parse(calls.at(-1)?.body ?? "null"), params);
+
+    calls.length = 0;
+    for (const bad of [{ amountMinorUnits: "-5" }, { amountMinorUnits: "1.5" }, { toAccountId: "not-a-uuid" }, { reference: "x".repeat(101) }, { extra: "field" }]) {
+      const res = await t.app.inject({ method: "POST", url: "/v1/experiments/run", headers: t.bearer(admin), payload: { scenarioId: "hybrid-peer-hybrid-required", params: bad } });
+      assert.strictEqual(res.statusCode, 400, JSON.stringify(bad));
+    }
+    assert.strictEqual(calls.length, 0, "invalid parameters never reach the simulator");
   });
 
   it("forbids auditors from running experiments", async () => {

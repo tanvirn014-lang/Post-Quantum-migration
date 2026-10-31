@@ -9,3 +9,5 @@ import "./audit.test.js";
 import "./access.test.js";
 import "./experiments.test.js";
 import "./cbom.test.js";
+import "./hndl.test.js";
+import "./research.test.js";

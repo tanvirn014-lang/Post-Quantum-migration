@@ -10,6 +10,8 @@ import { TelemetryRepository } from "./repos/telemetry.js";
 import { CbomService, DEFAULT_GROUND_TRUTH_FILE } from "./services/cbom-service.js";
 import { ConfigService } from "./services/config-service.js";
 import { CbomRepository } from "./repos/cbom.js";
+import { BenchmarkRepository, HndlRepository } from "./repos/research.js";
+import { ResearchService } from "./services/research-service.js";
 import { defaultSourceOptions, type CbomSourceOptions } from "./cbom/sources.js";
 import type { TokenVerifier } from "./auth/verifier.js";
 import type pg from "pg";
@@ -33,6 +35,7 @@ export function composeDeps(pool: pg.Pool, config: AppConfig, verifier: TokenVer
     telemetryRepo: new TelemetryRepository(pool),
     sidecarsRepo: new SidecarRepository(pool),
     configService: new ConfigService(pool, configRepo, peersRepo, audit),
+    researchService: new ResearchService(pool, new HndlRepository(pool), new BenchmarkRepository(pool), audit),
     cbomService: new CbomService(pool, new CbomRepository(pool), audit, configRepo, { ...defaultSourceOptions(), ...cbom }, cbom.groundTruthFile ?? DEFAULT_GROUND_TRUTH_FILE),
   };
 }
