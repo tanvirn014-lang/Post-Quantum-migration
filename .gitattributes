@@ -1,0 +1,4 @@
+# Evidence and vendored schemas are verified by SHA-256, so git must never rewrite their line endings.
+evidence/** -text
+security-service/schemas/** -text
+security-service/ground-truth/** -text
