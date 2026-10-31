@@ -1,6 +1,7 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { getTransaction, listPostings } from "../lib/api/ledger-client";
 import type { Posting } from "../lib/api/types";
+import { partnerProvenance, type PartnerProvenance } from "../lib/provenance";
 import { useAccounts } from "./useAccounts";
 
 export function usePostings(accountId: string, limit?: number) {
@@ -52,13 +53,18 @@ export function useTransactionDescriptions(transactionIds: string[]) {
   });
 
   const descriptionsByTransactionId: Record<string, string> = {};
+  const provenanceByTransactionId: Record<string, PartnerProvenance> = {};
   uniqueIds.forEach((id, i) => {
     const data = results[i]?.data;
-    if (data) descriptionsByTransactionId[id] = data.transaction.description;
+    if (!data) return;
+    descriptionsByTransactionId[id] = data.transaction.description;
+    const provenance = partnerProvenance(data.transaction.metadata);
+    if (provenance) provenanceByTransactionId[id] = provenance;
   });
 
   return {
     descriptionsByTransactionId,
+    provenanceByTransactionId,
     isLoading: results.some((r) => r.isLoading),
     isError: results.some((r) => r.isError),
     // A single query refetch only retries that one transaction - callers that show one

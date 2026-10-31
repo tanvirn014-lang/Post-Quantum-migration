@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useCustomerPostings, useTransactionDescriptions } from "../../hooks/useTransactions";
 import { formatCurrency, formatRelativeDate } from "../../lib/format";
 import { categorize } from "../../lib/categorize";
+import { describeProvenance } from "../../lib/provenance";
+import { Badge } from "../ui/Badge";
 import { DashboardWidget } from "./DashboardWidget";
 import { Button } from "../ui/Button";
 import { Drawer } from "../ui/Drawer";
@@ -25,6 +27,7 @@ export function RecentTransactionsWidget({
   const transactionIds = postings.map((p) => p.transactionId);
   const {
     descriptionsByTransactionId,
+    provenanceByTransactionId,
     isLoading: descriptionsLoading,
     isError: descriptionsError,
     refetch: refetchDescriptions,
@@ -34,6 +37,8 @@ export function RecentTransactionsWidget({
 
   function row(p: (typeof postings)[number]) {
     const description = descriptionsByTransactionId[p.transactionId] ?? "Transaction";
+    const provenance = provenanceByTransactionId[p.transactionId];
+    const origin = provenance ? describeProvenance(provenance) : null;
     return (
       <li key={p.id} className="flex items-center justify-between text-sm">
         <div className="flex flex-col">
@@ -41,6 +46,11 @@ export function RecentTransactionsWidget({
           <span className="text-xs text-muted">
             {categorize(description)} · {formatRelativeDate(p.createdAt)}
           </span>
+          {origin && (
+            <span className="mt-1" title={origin.explanation}>
+              <Badge tone={origin.tone}>{origin.label}</Badge>
+            </span>
+          )}
         </div>
         <span className={p.amountMinorUnits.startsWith("-") ? "text-muted" : "text-primary"}>
           {formatCurrency(p.amountMinorUnits, p.currency)}

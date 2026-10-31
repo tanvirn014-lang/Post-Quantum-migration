@@ -10,6 +10,7 @@ import "./lib/api/ledger-client-factory.test.js";
 import "./lib/auth/session.test.js";
 import "./lib/auth/routing.test.js";
 import "./lib/categorize.test.js";
+import "./lib/provenance.test.js";
 import "./hooks/useAccounts.test.js";
 import "./hooks/useDashboardLayout.test.js";
 import "./hooks/useTransactions.test.js";

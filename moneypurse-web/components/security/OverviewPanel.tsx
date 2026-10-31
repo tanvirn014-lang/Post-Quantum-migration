@@ -6,9 +6,16 @@ import { Badge } from "../ui/Badge";
 import { DataTable, PageHeader, Panel, Stat, TD, TH, TR } from "../ui/PageHeader";
 import { EmptyState, QueryBoundary, Skeleton } from "../ui/QueryState";
 
+/** Nested counter objects (e.g. decisions) become dotted scalar rows instead of "[object Object]". */
+export function flattenCounters(value: Record<string, unknown>, prefix = ""): [string, string][] {
+  return Object.entries(value).flatMap(([k, v]) =>
+    v !== null && typeof v === "object" && !Array.isArray(v) ? flattenCounters(v as Record<string, unknown>, `${prefix}${k}.`) : [[`${prefix}${k}`, String(v)] as [string, string]],
+  );
+}
+
 function SidecarCard({ s }: { s: SidecarStatus }) {
   const runtime = Object.entries(s.runtime);
-  const counters = Object.entries(s.counters);
+  const counters = flattenCounters(s.counters);
   return (
     <div className="rounded-lg bg-surface-overlay p-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">

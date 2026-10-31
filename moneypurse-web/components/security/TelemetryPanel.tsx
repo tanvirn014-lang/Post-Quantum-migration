@@ -27,6 +27,11 @@ import { Drawer } from "../ui/Drawer";
 import { DataTable, PageHeader, Panel, TD, TH, TR } from "../ui/PageHeader";
 import { EmptyState, QueryBoundary, Skeleton } from "../ui/QueryState";
 
+/** A missing peer name means different things: identity was never established, or no registered peer matched. */
+function peerFallback(decision: string): string {
+  return decision === "handshake-failed" ? "Not identified (handshake failed)" : "Unregistered";
+}
+
 function Detail({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[8.5rem_1fr] gap-2 border-t border-subtle py-2 text-sm first:border-t-0">
@@ -44,7 +49,7 @@ function ConnectionDetail({ e }: { e: ConnectionEvent }) {
       </Detail>
       <Detail label="Reason">{e.reason}</Detail>
       <Detail label="Time">{formatDateTime(e.occurredAt)}</Detail>
-      <Detail label="Peer">{e.peerName ?? "Unregistered"}</Detail>
+      <Detail label="Peer">{e.peerName ?? peerFallback(e.decision)}</Detail>
       <Detail label="Expected profile">{e.expectedProfile ?? "-"}</Detail>
       <Detail label="Key exchange">
         <Badge tone={keyExchangeTone(e.keyExchange)}>{KEY_EXCHANGE_LABEL[e.keyExchange]}</Badge>
@@ -149,7 +154,7 @@ function ConnectionsView() {
                         {formatDateTime(e.occurredAt)}
                       </button>
                     </td>
-                    <td className={TD}>{e.peerName ?? <span className="text-muted">Unregistered</span>}</td>
+                    <td className={TD}>{e.peerName ?? <span className="text-muted">{peerFallback(e.decision)}</span>}</td>
                     <td className={TD}>
                       <Badge tone={keyExchangeTone(e.keyExchange)}>{KEY_EXCHANGE_LABEL[e.keyExchange]}</Badge>
                     </td>
@@ -190,7 +195,7 @@ function AlertRow({ alert, canAcknowledge }: { alert: ConnectionEvent; canAcknow
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone={severityTone(alert.severity)}>{alert.severity}</Badge>
         <Badge tone={decisionTone(alert.decision)}>{DECISION_LABEL[alert.decision]}</Badge>
-        <span className="text-primary">{alert.peerName ?? "Unregistered peer"}</span>
+        <span className="text-primary">{alert.peerName ?? peerFallback(alert.decision)}</span>
         <span className="text-xs text-muted">{formatDateTime(alert.occurredAt)}</span>
       </div>
       <p className="mt-1 text-primary">{alert.reason}</p>
