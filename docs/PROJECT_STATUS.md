@@ -35,7 +35,7 @@ didactic and performs no cryptanalysis.
 | Component | Status | Evidence / note |
 |---|---|---|
 | Double-entry ledger core (accounts, transfers, idempotency, Postgres + memory adapters) | LIVE | `ledger-service/tests/**`, DB balance trigger in `migrations/0001_init.sql` |
-| Dashboard: accounts, transactions, cash-flow, spending (real ledger data) | LIVE data path, **currently unauthenticated and broken against the secured API** until Stage 6 | `moneypurse-web/tests/**` |
+| Dashboard: accounts, transactions, cash-flow, spending (real ledger data, signed-in customer, TLS provenance badges on partner payments) | LIVE | `moneypurse-web/tests/**` (127 tests); verified in the browser |
 | Dashboard: savings pots, card controls, search suggestions | SIM | static fixtures, no backend; to be labelled SIM in the UI |
 | Authentication (scrypt, EdDSA JWT + JWKS, refresh rotation with reuse detection, lockout), RBAC (4 roles), ownership checks, forced password change | LIVE | `ledger-service/tests/http/{auth,rbac,api}.test.ts`, `tests/identity/crypto.test.ts` |
 | Tamper-evident audit log (hash chain, DB-level append-only, verify endpoint) | LIVE | `tests/audit/chain.test.ts`, `tests/adapters/postgres-identity-audit.integration.test.ts` |
@@ -44,10 +44,10 @@ didactic and performs no cryptanalysis.
 | Per-peer fallback policy + violation telemetry (experiments B and C scenarios) | LIVE | `pqc-sidecar/tests/{policy,scenarios}.test.ts`; live run recorded in section 9 |
 | Simulated external peers + controlled ClientHello-modification proxy | SIM | `pqc-sidecar/tests/scenarios.test.ts` |
 | Core partner API: sidecar-asserted inbound payments recording the verified TLS key exchange on each ledger transaction | LIVE | `ledger-service/tests/http/partner.test.ts`, `pqc-sidecar/tests/scenarios.test.ts`; live run in section 10 |
-| CryptoProvider registry + configuration switching (control plane; sidecar applies it in Stage 3) | LIVE for the registry and versioned config, PLANNED for enforcement | `security-service/tests/config.test.ts` |
-| CBOM generator + schema validation + ground-truth comparison | PLANNED | Stage 5 |
-| HNDL educational simulator | PLANNED (will be SIM) | Stage 5 |
-| Benchmark harness + environment manifest | PLANNED | Stage 5 |
+| CryptoProvider registry + configuration switching (sidecar polls and applies to new connections; time-to-apply recorded) | LIVE | `security-service/tests/config.test.ts`, `pqc-sidecar/tests/sidecar.test.ts`, e2e section 5 |
+| CBOM generator (CycloneDX 1.7) + schema validation + ground-truth comparison | LIVE | `security-service/tests/cbom.test.ts` (42 tests); numbers in section 11 |
+| HNDL educational simulator + Mosca calculator | SIM | `security-service/tests/{hndl,research}.test.ts`; real primitives, modelled adversary, no cryptanalysis |
+| Benchmark harness + environment manifest; immutable evidence ingestion | LIVE | `pqc-sidecar/tests/bench.test.ts`, `security-service/tests/research.test.ts`; results in section 11 |
 | ML-DSA / PQ certificates / JWT migration | PLANNED (out of scope) | proposal section 21 |
 
 ## 3. Decisions
@@ -106,9 +106,9 @@ didactic and performs no cryptanalysis.
 | 2 | security-service | done 2026-11-01 - 70 tests green on real PostgreSQL; live cross-service auth smoke test passed |
 | 3 | pqc-sidecar + peer simulator | done 2026-11-01 - 91 sidecar tests; 7 scenarios pass on the live stack |
 | 4 | partner API integration | done 2026-11-01 - 131 ledger + 94 sidecar tests; live end-to-end payment verified |
-| 5 | CBOM, HNDL simulator, benchmark | not started |
-| 6 | frontend auth + security console | not started |
-| 7 | e2e validation, evidence, docs | not started |
+| 5 | CBOM, HNDL simulator, benchmark | done 2026-11-01 - 142 security-service tests; CBOM, HNDL, benchmark ingestion live (section 11) |
+| 6 | frontend auth + security console | auth gate, console pages, provenance badges done (127 tests); research pages (CBOM, HNDL, benchmarks, experiments) in progress |
+| 7 | e2e validation, evidence, docs | e2e script 50/50 on the live stack (`evidence/e2e/`); benchmark evidence run, claim ledger, runbook in progress |
 
 ## 7. Stage 1 findings (security defects in the pre-existing backend, now fixed)
 

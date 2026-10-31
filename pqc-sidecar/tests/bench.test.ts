@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { collectManifest, sha256Hex } from "../src/bench/manifest.js";
-import { HANDSHAKE_COLUMNS, runLatency, runThroughput, startBenchServer, summarizeLatency, summarizeThroughput, toCsv, type HandshakeSample } from "../src/bench/harness.js";
+import { HANDSHAKE_COLUMNS, assessValidity, handshakeOnce, runLatency, runThroughput, startBenchServer, summarizeLatency, summarizeThroughput, toCsv, type HandshakeSample } from "../src/bench/harness.js";
 import { bootstrapCI, describe as describeValues, mean, median, mulberry32, percentile, stddev, verdictFromInterval } from "../src/bench/stats.js";
 
 describe("benchmark statistics", () => {
@@ -150,6 +150,61 @@ describe("handshake benchmark harness (real TLS against a separate server proces
       assert.ok(summary.every((r) => r.runs === 2));
       const cpu = await server.cpu();
       assert.ok(cpu.handshakes >= 2 * 2 * 2 * 18, "the server really performed the handshakes");
+    } finally {
+      await server.stop();
+    }
+  });
+});
+
+describe("benchmark validity (a run with failed handshakes is never evidence)", () => {
+  const okSummary = { attempted: 100, succeeded: 100, failed: 0 };
+  const latency = (classical = okSummary, hybrid = okSummary) => ({ classical, hybrid }) as Parameters<typeof assessValidity>[0];
+
+  it("accepts a run with no failures", () => {
+    assert.deepStrictEqual(assessValidity(latency(), [{ concurrency: 1, condition: "classical", failures: 0 }] as never), { valid: true, problems: [] });
+  });
+
+  it("rejects a run whose failure rate exceeds 0.5% in either condition and names likely causes", () => {
+    const r = assessValidity(latency(okSummary, { attempted: 1000, succeeded: 900, failed: 100 }), []);
+    assert.strictEqual(r.valid, false);
+    assert.match(r.problems.join(" "), /hybrid: 100 of 1000 handshakes failed/);
+    assert.match(r.problems.join(" "), /ephemeral port/i);
+  });
+
+  it("tolerates a handful of failures below the threshold but reports no problem only under 0.5%", () => {
+    assert.strictEqual(assessValidity(latency({ attempted: 1000, succeeded: 996, failed: 4 }), []).valid, true);
+    assert.strictEqual(assessValidity(latency({ attempted: 1000, succeeded: 994, failed: 6 }), []).valid, false);
+  });
+
+  it("rejects a run with any failure at a throughput point, because throughput divides by completed handshakes", () => {
+    const r = assessValidity(latency(), [{ concurrency: 4, condition: "hybrid", failures: 2 }] as never);
+    assert.strictEqual(r.valid, false);
+    assert.match(r.problems.join(" "), /concurrency 4 hybrid: 2 failures/);
+  });
+});
+
+describe("benchmark server listeners (avoids ephemeral-port exhaustion on one destination port)", () => {
+  it("listens on many distinct ports and completes handshakes on any of them", async () => {
+    const server = await startBenchServer();
+    try {
+      assert.ok(server.ports.length >= 16, `expected many listener ports, got ${server.ports.length}`);
+      assert.strictEqual(new Set(server.ports).size, server.ports.length);
+      assert.strictEqual(server.port, server.ports[0]);
+      const last = await handshakeOnce(server.ports.at(-1)!, server.caPem, "X25519MLKEM768");
+      assert.ok(last.ok, last.error ?? "");
+    } finally {
+      await server.stop();
+    }
+  });
+
+  it("spreads measured handshakes across the listener ports and still counts every one on the server", async () => {
+    const server = await startBenchServer();
+    try {
+      const before = (await server.cpu()).handshakes;
+      const samples = await runLatency({ port: server.port, ports: server.ports, caPem: server.caPem, runs: 1, handshakesPerRun: 20, warmup: 0 });
+      assert.ok(samples.every((s) => s.ok));
+      const after = (await server.cpu()).handshakes;
+      assert.strictEqual(after - before, 40);
     } finally {
       await server.stop();
     }

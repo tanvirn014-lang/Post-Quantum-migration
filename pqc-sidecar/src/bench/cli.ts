@@ -5,6 +5,7 @@ import { collectManifest, sha256Hex, type EnvironmentManifest } from "./manifest
 import {
   HANDSHAKE_COLUMNS,
   THROUGHPUT_COLUMNS,
+  assessValidity,
   runLatency,
   runThroughput,
   startBenchServer,
@@ -12,6 +13,7 @@ import {
   summarizeThroughput,
   toCsv,
   type LatencySummary,
+  type Validity,
   type ThroughputSummaryRow,
 } from "./harness.js";
 
@@ -38,13 +40,14 @@ function arg(name: string): string | undefined {
 
 const fmt = (n: number, digits = 2) => (Number.isFinite(n) ? n.toFixed(digits) : "n/a");
 
-function report(manifest: EnvironmentManifest, latency: LatencySummary, throughput: ThroughputSummaryRow[], preset: string): string {
+function report(manifest: EnvironmentManifest, latency: LatencySummary, throughput: ThroughputSummaryRow[], preset: string, validity: Validity): string {
   const c = latency.classical;
   const h = latency.hybrid;
   const ci = latency.hybridMinusClassicalMedianMs;
   const lines = [
     `# Handshake benchmark ${manifest.runId}`,
     "",
+    ...(validity.valid ? [] : ["> **INVALID RUN - not evidence.** " + validity.problems.join("; "), ""]),
     `Preset: **${preset}** · ${manifest.startedAt} · commit ${manifest.sourceRevision.commit?.slice(0, 12) ?? "unknown"}${manifest.sourceRevision.workingTreeDirty ? " (dirty working tree)" : ""}`,
     `Host: ${manifest.host.cpuModel}, ${manifest.host.logicalCores} logical cores, ${manifest.host.totalMemoryMiB} MiB, ${manifest.host.os} ${manifest.host.release} · Node ${manifest.runtime.node}, OpenSSL ${manifest.runtime.openssl}`,
     "",
@@ -126,6 +129,7 @@ async function main(): Promise<void> {
       connectionReuse: "none (new TCP connection and full handshake every time)",
       applicationData: "none",
       serverGroupList: "X25519MLKEM768:X25519 (identical for both conditions)",
+      serverListeners: "32 loopback ports, identical configuration, handshakes rotate over them round-robin (avoids ephemeral-port exhaustion on one destination port)",
     },
     measurement: {
       timer: "performance.now() (monotonic)",
@@ -142,6 +146,7 @@ async function main(): Promise<void> {
     let lastPct = -1;
     const samples = await runLatency({
       port: server.port,
+      ports: server.ports,
       caPem: server.caPem,
       runs: preset.runs,
       handshakesPerRun: preset.handshakesPerRun,
@@ -154,10 +159,11 @@ async function main(): Promise<void> {
         }
       },
     });
-    const throughputRows = await runThroughput({ port: server.port, caPem: server.caPem, server, concurrency: preset.concurrency, handshakesPerPoint: preset.throughputHandshakes, runs: preset.throughputRuns });
+    const throughputRows = await runThroughput({ port: server.port, ports: server.ports, caPem: server.caPem, server, concurrency: preset.concurrency, handshakesPerPoint: preset.throughputHandshakes, runs: preset.throughputRuns });
 
     const latency = summarizeLatency(samples);
     const throughput = summarizeThroughput(throughputRows);
+    const validity = assessValidity(latency, throughput);
     const dir = path.join(outRoot, runId);
     await mkdir(dir, { recursive: true });
 
@@ -165,18 +171,22 @@ async function main(): Promise<void> {
       "handshakes.csv": toCsv(samples, HANDSHAKE_COLUMNS),
       "throughput.csv": toCsv(throughputRows, THROUGHPUT_COLUMNS),
       "summary.json": JSON.stringify({ latency, throughput }, null, 2),
-      "report.md": report(manifest, latency, throughput, presetName),
+      "report.md": report(manifest, latency, throughput, presetName, validity),
     };
     const checksums = Object.fromEntries(Object.entries(files).map(([name, content]) => [name, sha256Hex(content)]));
-    files["manifest.json"] = JSON.stringify({ ...manifest, outputs: { directory: dir, sha256: checksums } }, null, 2);
+    files["manifest.json"] = JSON.stringify({ ...manifest, validity, outputs: { directory: dir, sha256: checksums } }, null, 2);
     for (const [name, content] of Object.entries(files)) await writeFile(path.join(dir, name), content);
     await writeFile(path.join(dir, "checksums.sha256"), Object.entries(checksums).map(([n, h]) => `${h}  ${n}`).join("\n") + "\n");
 
     console.log(`\nwritten to ${dir}\n`);
     console.log(files["report.md"]);
 
-    if (process.argv.includes("--publish")) {
-      await publish({ runId, label, manifest: { ...manifest, outputs: { sha256: checksums } }, summary: { latency, throughput }, handshakesCsv: files["handshakes.csv"], throughputCsv: files["throughput.csv"] });
+    if (!validity.valid) {
+      console.error(`
+INVALID RUN, not published: ${validity.problems.join("; ")}`);
+      process.exitCode = 3;
+    } else if (process.argv.includes("--publish")) {
+      await publish({ runId, label, manifest: { ...manifest, validity, outputs: { sha256: checksums } }, summary: { latency, throughput }, handshakesCsv: files["handshakes.csv"], throughputCsv: files["throughput.csv"] });
     }
   } finally {
     await server.stop();

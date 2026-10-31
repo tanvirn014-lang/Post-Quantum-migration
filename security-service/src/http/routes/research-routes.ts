@@ -1,7 +1,8 @@
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { QUANTUM_ASSUMPTIONS } from "../../hndl/simulator.js";
-import type { StoredHndlRun } from "../../repos/research.js";
+import { assessBenchmarkIntegrity } from "../../domain/benchmark-integrity.js";
+import type { BenchmarkIndexEntry, BenchmarkRecord, StoredHndlRun } from "../../repos/research.js";
 import type { RouteDeps } from "../deps.js";
 import { requestMeta, requirePrincipal } from "../guards.js";
 
@@ -20,6 +21,14 @@ const benchmarkBody = z.object({
   handshakesCsv: csvText,
   throughputCsv: csvText,
 });
+
+/** The list is a light index: the summary is used only to derive integrity and is not returned. */
+function toIndexDTO(b: BenchmarkIndexEntry) {
+  const { summary, receivedAt, ...rest } = b;
+  return { ...rest, receivedAt: receivedAt.toISOString(), integrity: assessBenchmarkIntegrity(summary) };
+}
+
+const toDetailDTO = (b: BenchmarkRecord) => ({ ...toIndexDTO(b), manifest: b.manifest, summary: b.summary });
 
 const toHndlDTO = (r: StoredHndlRun) => ({ id: r.id, createdAt: r.createdAt.toISOString(), ...r.result });
 
@@ -50,13 +59,12 @@ export function registerResearchRoutes(deps: RouteDeps): FastifyPluginAsync {
 
     app.get("/v1/benchmarks", { preHandler: readBench }, async (req) => {
       const { limit } = listQuery.parse(req.query);
-      return (await researchService.listBenchmarks(limit)).map((b) => ({ ...b, receivedAt: b.receivedAt.toISOString() }));
+      return (await researchService.listBenchmarks(limit)).map(toIndexDTO);
     });
 
     app.get("/v1/benchmarks/:runId", { preHandler: readBench }, async (req) => {
       const { runId } = runIdParam.parse(req.params);
-      const b = await researchService.benchmark(runId);
-      return { ...b, receivedAt: b.receivedAt.toISOString() };
+      return toDetailDTO(await researchService.benchmark(runId));
     });
 
     app.get("/v1/benchmarks/:runId/:which.csv", { preHandler: readBench }, async (req, reply) => {

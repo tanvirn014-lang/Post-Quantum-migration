@@ -151,6 +151,27 @@ describe("benchmark ingestion and read API", () => {
     assert.strictEqual((await ingest(benchPayload({ handshakesCsv: 42 }))).statusCode, 400);
   });
 
+  it("flags a run with failed handshakes as invalid in both the list and the detail view, and never as valid", async () => {
+    const failing = (failed: number, attempted = 1000) => ({ attempted, succeeded: attempted - failed, failed, latencyMs: { median: 1 } });
+    const summaryOf = (classical: object, hybrid: object, throughputFailures = 0) => ({ latency: { classical, hybrid }, throughput: [{ concurrency: 1, condition: "hybrid", failures: throughputFailures }] });
+    await ingest(benchPayload({ runId: "run-clean-0001", summary: summaryOf(failing(0), failing(0)) }));
+    await ingest(benchPayload({ runId: "run-fails-0001", summary: summaryOf(failing(0), failing(240)) }));
+    await ingest(benchPayload({ runId: "run-thru-fail1", summary: summaryOf(failing(0), failing(0), 3) }));
+    await ingest(benchPayload({ runId: "run-nodata-001", summary: { latency: {}, throughput: [] } }));
+
+    const headers = t.bearer(await t.token("auditor"));
+    const list = (await t.app.inject({ method: "GET", url: "/v1/benchmarks", headers })).json() as { runId: string; integrity: { status: string; problems: string[] } }[];
+    const by = Object.fromEntries(list.map((r) => [r.runId, r.integrity]));
+    assert.strictEqual(by["run-clean-0001"]!.status, "valid");
+    assert.strictEqual(by["run-fails-0001"]!.status, "invalid");
+    assert.match(by["run-fails-0001"]!.problems.join(" "), /hybrid: 240 of 1000/);
+    assert.strictEqual(by["run-thru-fail1"]!.status, "invalid");
+    assert.strictEqual(by["run-nodata-001"]!.status, "unverifiable");
+
+    const one = (await t.app.inject({ method: "GET", url: "/v1/benchmarks/run-fails-0001", headers })).json();
+    assert.strictEqual(one.integrity.status, "invalid");
+  });
+
   it("accepts a payload larger than the default body limit", async () => {
     const big = "run,condition\n" + "0,classical\n".repeat(80_000); // ~1 MB
     const res = await ingest(benchPayload({ runId: "big-run-0001", handshakesCsv: big }));

@@ -48,6 +48,8 @@ export interface BenchmarkInput {
 
 export interface BenchmarkIndexEntry {
   runId: string;
+  /** Raw summary, used only to derive integrity; the list DTO does not return it. */
+  summary: Record<string, unknown>;
   receivedAt: Date;
   label: string;
   commit: string | null;
@@ -57,11 +59,11 @@ export interface BenchmarkIndexEntry {
 
 export interface BenchmarkRecord extends BenchmarkIndexEntry {
   manifest: Record<string, unknown>;
-  summary: Record<string, unknown>;
 }
 
 interface IndexRow {
   run_id: string;
+  summary: Record<string, unknown>;
   received_at: Date;
   label: string;
   source_commit: string | null;
@@ -74,14 +76,14 @@ interface IndexRow {
 
 interface FullRow extends IndexRow {
   manifest: Record<string, unknown>;
-  summary: Record<string, unknown>;
 }
 
 const INDEX_COLUMNS =
-  "run_id, received_at, label, source_commit, working_tree_dirty, handshakes_csv_sha256, throughput_csv_sha256, octet_length(handshakes_csv) AS handshakes_bytes, octet_length(throughput_csv) AS throughput_bytes";
+  "run_id, summary, received_at, label, source_commit, working_tree_dirty, handshakes_csv_sha256, throughput_csv_sha256, octet_length(handshakes_csv) AS handshakes_bytes, octet_length(throughput_csv) AS throughput_bytes";
 
 const mapIndex = (r: IndexRow): BenchmarkIndexEntry => ({
   runId: r.run_id,
+  summary: r.summary,
   receivedAt: r.received_at,
   label: r.label,
   commit: r.source_commit,
@@ -128,7 +130,7 @@ export class BenchmarkRepository {
   async get(runId: string): Promise<BenchmarkRecord | null> {
     const { rows } = await this.db.query<FullRow>(`SELECT ${INDEX_COLUMNS}, manifest, summary FROM benchmark_runs WHERE run_id = $1`, [runId]);
     const row = rows[0];
-    return row ? { ...mapIndex(row), manifest: row.manifest, summary: row.summary } : null;
+    return row ? { ...mapIndex(row), manifest: row.manifest } : null;
   }
 
   async csv(runId: string, which: "handshakes" | "throughput"): Promise<string | null> {

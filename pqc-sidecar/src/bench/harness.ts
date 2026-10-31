@@ -36,14 +36,17 @@ export interface HandshakeSample {
 }
 
 export interface BenchServer {
+  /** First listener port, kept for single-port callers. */
   port: number;
+  /** All listener ports; spreading handshakes across them avoids ephemeral-port exhaustion. */
+  ports: number[];
   caPem: string;
   cpu(): Promise<{ user: number; system: number; rss: number; handshakes: number }>;
   stop(): Promise<void>;
 }
 
 /** Starts the benchmark server in its own process with a fresh classical ECDSA certificate. */
-export async function startBenchServer(groups = "X25519MLKEM768:X25519"): Promise<BenchServer> {
+export async function startBenchServer(groups = "X25519MLKEM768:X25519", listeners = 32): Promise<BenchServer> {
   const ca = await createCertificateAuthority("Benchmark CA", 1);
   const server = await issueServerCertificate(ca, { commonName: "bench-server", dnsNames: ["localhost"], ipAddresses: ["127.0.0.1"], days: 1 });
   const child: ChildProcess = fork(fileURLToPath(new URL("./server-process.js", import.meta.url)), [], { stdio: ["ignore", "ignore", "inherit", "ipc"] });
@@ -61,12 +64,13 @@ export async function startBenchServer(groups = "X25519MLKEM768:X25519"): Promis
       child.once("exit", onExit);
     });
 
-  const listening = waitFor<{ type: "listening"; port: number }>("listening");
-  child.send({ type: "start", keyPem: server.keyPem, certPem: server.certPem, groups });
-  const { port } = await listening;
+  const listening = waitFor<{ type: "listening"; port: number; ports: number[] }>("listening");
+  child.send({ type: "start", keyPem: server.keyPem, certPem: server.certPem, groups, listeners });
+  const { port, ports } = await listening;
 
   return {
     port,
+    ports,
     caPem: ca.certPem,
     async cpu() {
       const reply = waitFor<{ type: "cpu"; user: number; system: number; rss: number; handshakes: number }>("cpu");
@@ -147,8 +151,17 @@ export async function handshakeOnce(port: number, caPem: string, clientGroups: s
   });
 }
 
+/** Round-robin over the listener ports (or the single port). */
+function portRotation(port: number, ports?: number[]): () => number {
+  const list = ports && ports.length > 0 ? ports : [port];
+  let i = 0;
+  return () => list[i++ % list.length]!;
+}
+
 export interface LatencyOptions {
   port: number;
+  /** When given, handshakes rotate over these ports instead of always using `port`. */
+  ports?: number[];
   caPem: string;
   runs: number;
   handshakesPerRun: number;
@@ -166,10 +179,11 @@ export async function runLatency(opts: LatencyOptions): Promise<HandshakeSample[
   const total = opts.runs * 2 * opts.handshakesPerRun;
   let done = 0;
 
+  const nextPort = portRotation(opts.port, opts.ports);
   const measure = async (run: number, condition: Condition, position: number, count: number, warmup: boolean): Promise<void> => {
     const { clientGroups, expectedGroup } = CONDITIONS[condition];
     for (let seq = 0; seq < count; seq++) {
-      const r = await handshakeOnce(opts.port, opts.caPem, clientGroups);
+      const r = await handshakeOnce(nextPort(), opts.caPem, clientGroups);
       samples.push({ run, condition, position, seq, warmup, expectedGroup: groupName(expectedGroup)!, ...r });
       if (!warmup) opts.onProgress?.(++done, total);
     }
@@ -197,8 +211,9 @@ export interface ThroughputRow {
 }
 
 /** Experiment G. Fixed work per point, `concurrency` handshakes in flight, with CPU time of both processes. */
-export async function runThroughput(opts: { port: number; caPem: string; server: BenchServer; concurrency: number[]; handshakesPerPoint: number; runs: number }): Promise<ThroughputRow[]> {
+export async function runThroughput(opts: { port: number; ports?: number[]; caPem: string; server: BenchServer; concurrency: number[]; handshakesPerPoint: number; runs: number }): Promise<ThroughputRow[]> {
   const rows: ThroughputRow[] = [];
+  const nextPort = portRotation(opts.port, opts.ports);
   for (let run = 0; run < opts.runs; run++) {
     const order: Condition[] = run % 2 === 0 ? ["classical", "hybrid"] : ["hybrid", "classical"];
     for (const concurrency of opts.concurrency) {
@@ -213,7 +228,7 @@ export async function runThroughput(opts: { port: number; caPem: string; server:
           Array.from({ length: concurrency }, async () => {
             while (next < opts.handshakesPerPoint) {
               next += 1;
-              const r = await handshakeOnce(opts.port, opts.caPem, clientGroups);
+              const r = await handshakeOnce(nextPort(), opts.caPem, clientGroups);
               if (!r.ok) failures += 1;
             }
           }),
@@ -347,3 +362,30 @@ export function toCsv<T extends object>(rows: readonly T[], columns: readonly (k
 
 export const HANDSHAKE_COLUMNS = ["run", "condition", "position", "seq", "warmup", "ok", "handshakeMs", "clientHelloBytes", "serverHelloBytes", "bytesSent", "bytesReceived", "selectedGroup", "expectedGroup", "error"] as const;
 export const THROUGHPUT_COLUMNS = ["run", "condition", "concurrency", "handshakes", "failures", "elapsedMs", "handshakesPerSecond", "clientCpuMsPerHandshake", "serverCpuMsPerHandshake", "serverRssMiB"] as const;
+
+export interface Validity {
+  valid: boolean;
+  problems: string[];
+}
+
+/** More than this share of failed handshakes in a condition makes the latency sample unrepresentative. */
+export const MAX_FAILURE_RATE = 0.005;
+
+/**
+ * A run with failed handshakes is a harness or environment fault, not a result: failures drop the
+ * slowest or most contended attempts from the sample and throughput divides by completed work.
+ * Such a run is still written to disk for diagnosis, but it is flagged invalid and never published.
+ */
+export function assessValidity(latency: Pick<LatencySummary, "classical" | "hybrid">, throughput: Pick<ThroughputSummaryRow, "concurrency" | "condition" | "failures">[]): Validity {
+  const problems: string[] = [];
+  for (const condition of ["classical", "hybrid"] as const) {
+    const c = latency[condition];
+    if (c.attempted > 0 && c.failed / c.attempted > MAX_FAILURE_RATE) {
+      problems.push(`${condition}: ${c.failed} of ${c.attempted} handshakes failed (limit ${MAX_FAILURE_RATE * 100}%); likely causes are ephemeral port exhaustion, CPU starvation or a server fault`);
+    }
+  }
+  for (const row of throughput) {
+    if (row.failures > 0) problems.push(`throughput concurrency ${row.concurrency} ${row.condition}: ${row.failures} failures`);
+  }
+  return { valid: problems.length === 0, problems };
+}
