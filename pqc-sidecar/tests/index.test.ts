@@ -1,0 +1,5 @@
+// Single entry point for node --test.
+import "./wire.test.js";
+import "./policy.test.js";
+import "./sidecar.test.js";
+import "./scenarios.test.js";

@@ -3,7 +3,7 @@
   "private": true,
   "description": "Hybrid post-quantum migration architecture for legacy-style digital banking - research prototype. Orchestration scripts only; each service is its own package.",
   "scripts": {
-    "install:all": "npm --prefix ledger-service install && npm --prefix security-service install && npm --prefix moneypurse-web install",
+    "install:all": "npm --prefix ledger-service install && npm --prefix security-service install && npm --prefix pqc-sidecar install && npm --prefix moneypurse-web install",
     "setup": "node scripts/setup.mjs",
     "db:up": "docker compose -f ledger-service/docker-compose.yml up -d",
     "db:down": "docker compose -f ledger-service/docker-compose.yml down",
@@ -14,6 +14,10 @@
     "test:ledger": "npm --prefix ledger-service test",
     "test:web": "npm --prefix moneypurse-web test",
     "dev:security": "npm --prefix security-service run dev",
-    "test:security": "npm --prefix security-service test"
+    "test:security": "npm --prefix security-service test",
+    "dev:sidecar": "npm --prefix pqc-sidecar run start",
+    "dev:simulator": "npm --prefix pqc-sidecar run start:simulator",
+    "test:sidecar": "npm --prefix pqc-sidecar test",
+    "register-peers": "node scripts/register-sim-peers.mjs"
   }
 }

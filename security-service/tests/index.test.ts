@@ -7,3 +7,4 @@ import "./config.test.js";
 import "./telemetry.test.js";
 import "./audit.test.js";
 import "./access.test.js";
+import "./experiments.test.js";

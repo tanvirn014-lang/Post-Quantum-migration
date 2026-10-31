@@ -61,10 +61,11 @@ export const COMPONENTS: readonly ComponentStatus[] = [
     id: "crypto-agility-config",
     name: "CryptoProvider registry and TLS profile configuration",
     status: "LIVE",
-    summary: "Allow-listed provider and group registry; versioned, audited selection of the active TLS profile that the sidecar polls.",
-    evidence: ["security-service/tests/config.test.ts"],
+    summary: "Allow-listed provider and group registry; versioned, audited selection of the active TLS profile, which the sidecar polls and applies to new connections without a restart.",
+    evidence: ["security-service/tests/config.test.ts", "pqc-sidecar/tests/sidecar.test.ts"],
     limitations: [
       "Configuration-level selection only: the TLS library performs the handshake; per-operation provider substitution is not implemented.",
+      "A change affects NEW connections; connections already established keep what they negotiated.",
       "Only one provider (Node.js TLS / OpenSSL) is selectable; the Bouncy Castle provider named in the proposal is PLANNED.",
     ],
   },
@@ -79,18 +80,35 @@ export const COMPONENTS: readonly ComponentStatus[] = [
   {
     id: "hybrid-tls-sidecar",
     name: "Hybrid TLS 1.3 sidecar (X25519MLKEM768)",
-    status: "PLANNED",
-    summary: "Perimeter TLS 1.3 terminator negotiating the hybrid group with capable peers.",
-    evidence: [],
-    limitations: ["Certificate authentication stays classical.", "Protects only traffic routed through it; the sidecar-to-core hop is plain HTTP on a private network."],
+    status: "LIVE",
+    summary:
+      "Perimeter TLS 1.3-only terminator on Node.js/OpenSSL 3.5 that negotiates X25519MLKEM768 with capable peers over mutual TLS, verifies the negotiated group from the ServerHello on the wire, and forwards allow-listed requests to the core with a signed peer assertion.",
+    evidence: ["pqc-sidecar/tests/wire.test.ts", "pqc-sidecar/tests/sidecar.test.ts"],
+    limitations: [
+      "Certificate authentication stays classical (ECDSA P-256); no post-quantum signatures.",
+      "Protects only traffic routed through it; the sidecar-to-core hop is plain HTTP on a private network.",
+      "node:tls cannot report a hybrid group, so the negotiated group is read from the plaintext ServerHello (verified handshake trace); the implementation stack is Node.js/OpenSSL rather than the Java/BCJSSE named in the proposal.",
+    ],
   },
   {
     id: "fallback-enforcement",
     name: "Classical fallback and policy-violation detection",
-    status: "PLANNED",
-    summary: "Expected-profile versus observed-group enforcement with reject-or-alert outcomes.",
-    evidence: [],
-    limitations: ["Detects policy violations visible to the sidecar; it cannot prove a ClientHello was stripped by an on-path attacker."],
+    status: "LIVE",
+    summary:
+      "Every connection ends in exactly one decision: hybrid accepted, classical accepted only as an explicitly labelled fallback for classical-allowed peers, or rejected (policy violation / unknown peer). Each decision is recorded with the expected profile and observed group.",
+    evidence: ["pqc-sidecar/tests/policy.test.ts", "pqc-sidecar/tests/sidecar.test.ts", "pqc-sidecar/tests/scenarios.test.ts"],
+    limitations: [
+      "Detects policy violations visible to the sidecar; from a ClientHello alone it cannot tell a stripped hybrid group from a client that never supported it (shown by the controlled-modification scenario).",
+      "No revocation checking; a single trusted CA signs peer certificates.",
+    ],
+  },
+  {
+    id: "peer-simulator",
+    name: "Simulated external peers and controlled ClientHello modification",
+    status: "SIM",
+    summary: "Simulated hybrid-capable, classical-only, unregistered and untrusted peers plus an on-path proxy that strips the hybrid group, used to run experiments B and C.",
+    evidence: ["pqc-sidecar/tests/scenarios.test.ts"],
+    limitations: ["Peers are simulated on one host; real partner interoperability is future work.", "The tamper proxy is a test tool, never part of the sidecar data path."],
   },
   {
     id: "cbom",

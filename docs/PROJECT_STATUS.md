@@ -40,8 +40,9 @@ didactic and performs no cryptanalysis.
 | Authentication (scrypt, EdDSA JWT + JWKS, refresh rotation with reuse detection, lockout), RBAC (4 roles), ownership checks, forced password change | LIVE | `ledger-service/tests/http/{auth,rbac,api}.test.ts`, `tests/identity/crypto.test.ts` |
 | Tamper-evident audit log (hash chain, DB-level append-only, verify endpoint) | LIVE | `tests/audit/chain.test.ts`, `tests/adapters/postgres-identity-audit.integration.test.ts` |
 | security-service: peer registry, provider/TLS-profile registry, versioned audited configuration, telemetry ingestion + queries, alert acknowledgement, config audit chain, implementation-status API | LIVE | `security-service/tests/{peers,config,telemetry,audit,access,status}.test.ts` (70 tests, real PostgreSQL) |
-| Hybrid TLS 1.3 sidecar (`X25519MLKEM768`) | PLANNED | Stage 3; feasibility probe passed (see D-02) |
-| Per-peer fallback policy + violation telemetry | PLANNED | Stage 3 |
+| Hybrid TLS 1.3 sidecar (`X25519MLKEM768`), mutual TLS, verified negotiated group, signed peer assertion to the core | LIVE | `pqc-sidecar/tests/{wire,sidecar}.test.ts` (91 tests, real TLS handshakes) |
+| Per-peer fallback policy + violation telemetry (experiments B and C scenarios) | LIVE | `pqc-sidecar/tests/{policy,scenarios}.test.ts`; live run recorded in section 9 |
+| Simulated external peers + controlled ClientHello-modification proxy | SIM | `pqc-sidecar/tests/scenarios.test.ts` |
 | CryptoProvider registry + configuration switching (control plane; sidecar applies it in Stage 3) | LIVE for the registry and versioned config, PLANNED for enforcement | `security-service/tests/config.test.ts` |
 | CBOM generator + schema validation + ground-truth comparison | PLANNED | Stage 5 |
 | HNDL educational simulator | PLANNED (will be SIM) | Stage 5 |
@@ -102,7 +103,7 @@ didactic and performs no cryptanalysis.
 | 0 | Audit, feasibility probes, plan | done 2026-11-01 |
 | 1 | ledger-service identity, RBAC, audit, hardening | done 2026-11-01 - 127 tests green incl. Postgres integration; live smoke test passed |
 | 2 | security-service | done 2026-11-01 - 70 tests green on real PostgreSQL; live cross-service auth smoke test passed |
-| 3 | pqc-sidecar + peer simulator | not started |
+| 3 | pqc-sidecar + peer simulator | done 2026-11-01 - 91 sidecar tests; 7 scenarios pass on the live stack |
 | 4 | partner API integration | not started |
 | 5 | CBOM, HNDL simulator, benchmark | not started |
 | 6 | frontend auth + security console | not started |
@@ -136,3 +137,33 @@ detectable against an externally recorded head hash; rate-limit counters are in-
 - Experiment E support: `GET /v1/crypto/config` reports, per configuration version, how long until
   a running sidecar reported it applied (`timeToApplyMs`). The sidecar populates this in Stage 3.
 - security-service tests need PostgreSQL (they use an isolated `security_test` database).
+
+## 9. Stage 3 findings and measurements
+
+Verified on this machine (Node v26.4.0, OpenSSL 3.5.7, loopback, single host - not a production network):
+
+- **The Node TLS API cannot report a hybrid negotiated group** (client `getEphemeralKeyInfo()` returns an empty
+  object, server side returns null). The sidecar therefore parses the plaintext ClientHello/ServerHello (decision
+  D-03); this is the "verified handshake trace" the proposal allows.
+- **H1 (handshake bytes), first observation:** ClientHello record 1457 B with the hybrid share vs 235 B classical;
+  hybrid server key share 1120 B vs 32 B (client share 1216 B vs 32 B) - the RFC 10024 sizes, asserted in
+  `pqc-sidecar/tests/wire.test.ts`. Single handshakes only; the benchmark harness (Stage 5) produces the distribution.
+- **OpenSSL sends only the first group's key share** unless the group list uses the `*` prefix
+  (`*X25519MLKEM768:*X25519`). Browser-like peers need the prefix; without it a hybrid-first client offers a
+  classical group in supported_groups but no classical share.
+- **A manually constructed server TLSSocket never sets `socket.authorized`** (only `tls.Server` does). The first
+  implementation therefore rejected every peer (fail-closed). Client certificates are now verified explicitly
+  (OpenSSL verdict where exposed + independent X.509 checks); see `src/sidecar/client-cert.ts`.
+- **Experiment C (controlled ClientHello modification):** stripping X25519MLKEM768 from a hybrid peer's hello makes the
+  handshake FAIL (transcript mismatch in Finished); it never silently completes on X25519. The sidecar sees only
+  the modified hello (classical groups only), which is indistinguishable from a legitimate classical-only client -
+  so the detector scope stays "policy violations visible to the sidecar", exactly as the proposal states. The
+  failure happens before the client authenticates, so the event has no peer identity.
+- **H3:** every connection that completes a handshake ends in exactly one classified decision; a classical
+  negotiation is either `allowed-fallback` (classical-allowed peer) or rejected.
+- **Experiment E (partial):** configuration changes apply to new connections without a restart (tested at the
+  sidecar and visible live as the sidecar picking up registry changes while running). Measured time-to-apply is
+  reported by `GET /v1/crypto/config`; a recorded distribution comes with the Stage 7 evidence package.
+
+Live run of all seven scenarios through dashboard API -> simulator -> sidecar -> telemetry (2026-11-01): all PASS,
+sidecar in sync, OpenSSL 3.5.7 reported by the running sidecar.
