@@ -1,0 +1,264 @@
+{
+  "schemaVersion": 1,
+  "scope": "Cryptographic assets in the production code, configuration examples and generated research PKI of ledger-service, security-service, pqc-sidecar and the root scripts, as present in the repository on 2026-11-01. In scope: algorithms, the TLS protocol, X.509 certificates, and cryptographic key/secret/token/digest material the code creates, stores or checks. Library components are not part of the comparison.",
+  "preparedBy": "An AI assistant (Claude), by manually reading the source files and grepping them for cryptographic primitives and for key, secret and token names in code, .env.example files and scripts/setup.mjs. Written before any comparison was run and without consulting the generator output, but by the same agent that wrote the generator, so independence is limited. A human reviewer must confirm it before any research claim is made from the completeness and precision numbers (proposal Appendix E, Appendix F).",
+  "excluded": [
+    "moneypurse-web (a browser UI; it performs no cryptography of its own, TLS to the APIs is out of the prototype's scope).",
+    "Test files and test fixtures.",
+    "Algorithms used inside third-party libraries or the Node.js/OpenSSL runtime beyond what the TLS handshake and the code above select explicitly.",
+    "The HNDL educational simulator and benchmark ingestion internals of security-service (not part of this inventory pass).",
+    "node_modules, dist output, the vendored CycloneDX schemas."
+  ],
+  "items": [
+    {
+      "id": "alg-x25519",
+      "kind": "algorithm",
+      "name": "X25519",
+      "expectedProvenance": "declared",
+      "expected": { "primitive": "key-agree", "algorithmFamily": "ECDH" },
+      "locations": ["pqc-sidecar/src/wire/groups.ts", "security-service/src/domain/crypto.ts", "pqc-sidecar/src/peers/client.ts", "pqc-sidecar/src/bench/harness.ts", "pqc-sidecar/src/bench/cli.ts"],
+      "notes": "Classical group: the classical half of the hybrid group, the fallback group, and the classical-baseline benchmark condition."
+    },
+    {
+      "id": "alg-mlkem768",
+      "kind": "algorithm",
+      "name": "ML-KEM-768",
+      "expectedProvenance": "declared",
+      "expected": { "primitive": "kem", "algorithmFamily": "ML-KEM", "parameterSetIdentifier": "768" },
+      "locations": ["pqc-sidecar/src/wire/groups.ts", "security-service/src/domain/crypto.ts", "pqc-sidecar/src/peers/client.ts", "pqc-sidecar/src/bench/harness.ts", "pqc-sidecar/src/bench/cli.ts"],
+      "notes": "Never called directly: it is the post-quantum half of X25519MLKEM768 inside OpenSSL."
+    },
+    {
+      "id": "alg-x25519mlkem768",
+      "kind": "algorithm",
+      "name": "X25519MLKEM768",
+      "expectedProvenance": "declared",
+      "expected": { "primitive": "kem" },
+      "locations": ["pqc-sidecar/src/wire/groups.ts", "security-service/src/domain/crypto.ts", "pqc-sidecar/src/peers/client.ts", "pqc-sidecar/src/bench/harness.ts", "pqc-sidecar/src/bench/cli.ts"]
+    },
+    {
+      "id": "alg-ecdsa-p256-sha256",
+      "kind": "algorithm",
+      "name": "ECDSA-P256-SHA256",
+      "expectedProvenance": "declared",
+      "expected": { "primitive": "signature", "algorithmFamily": "ECDSA", "ellipticCurve": "nist/P-256" },
+      "locations": [
+        "pqc-sidecar/src/pki/generate.ts",
+        "pqc-sidecar/src/sidecar/client-cert.ts",
+        "pqc-sidecar/.secrets/pki/ca.pem",
+        "pqc-sidecar/.secrets/pki/sidecar/server.pem",
+        "pqc-sidecar/.secrets/pki/peers/hybrid-bank/cert.pem",
+        "pqc-sidecar/.secrets/pki/peers/legacy-psp/cert.pem",
+        "pqc-sidecar/.secrets/pki/peers/strict-bank/cert.pem",
+        "pqc-sidecar/.secrets/pki/peers/unregistered-peer/cert.pem"
+      ],
+      "notes": "Signature on every certificate in the research PKI (the self-signed rogue certificate also uses it). The sidecar verifies client certificates with it."
+    },
+    {
+      "id": "alg-ed25519",
+      "kind": "algorithm",
+      "name": "EdDSA-Ed25519",
+      "expectedProvenance": "declared",
+      "expected": { "primitive": "signature", "algorithmFamily": "EdDSA" },
+      "locations": ["ledger-service/src/identity/tokens.ts", "security-service/src/auth/verifier.ts", "scripts/setup.mjs", "ledger-service/src/compose.ts"],
+      "notes": "Access-token signing and verification, plus generation of the signing key (setup script and the development fallback in compose.ts)."
+    },
+    {
+      "id": "alg-scrypt",
+      "kind": "algorithm",
+      "name": "scrypt",
+      "expectedProvenance": "declared",
+      "expected": { "primitive": "kdf", "algorithmFamily": "scrypt" },
+      "locations": ["ledger-service/src/identity/password.ts"]
+    },
+    {
+      "id": "alg-sha256",
+      "kind": "algorithm",
+      "name": "SHA-256",
+      "expectedProvenance": "declared",
+      "expected": { "primitive": "hash", "algorithmFamily": "SHA-2", "parameterSetIdentifier": "256" },
+      "locations": [
+        "ledger-service/src/audit/chain.ts",
+        "security-service/src/audit/chain.ts",
+        "ledger-service/src/app/idempotency.ts",
+        "ledger-service/src/identity/tokens.ts",
+        "ledger-service/src/app/identity-service.ts",
+        "security-service/src/http/guards.ts",
+        "pqc-sidecar/src/peers/simulator-main.ts",
+        "pqc-sidecar/src/pki/generate.ts",
+        "pqc-sidecar/src/bench/manifest.ts"
+      ],
+      "notes": "Audit hash chains, idempotency request hashes, refresh-token hashes, constant-time token comparison digests, certificate fingerprints, benchmark data checksums."
+    },
+    {
+      "id": "alg-hmac-sha256",
+      "kind": "algorithm",
+      "name": "HMAC-SHA256",
+      "expectedProvenance": "declared",
+      "expected": { "primitive": "mac", "algorithmFamily": "HMAC", "parameterSetIdentifier": "256" },
+      "locations": ["pqc-sidecar/src/sidecar/assertion.ts", "ledger-service/src/partner/assertion.ts"],
+      "notes": "Signs the peer assertion in the sidecar and verifies it in the core."
+    },
+    {
+      "id": "alg-aes256gcm",
+      "kind": "algorithm",
+      "name": "AES-256-GCM",
+      "expectedProvenance": "observed",
+      "expected": { "primitive": "ae", "algorithmFamily": "AES", "parameterSetIdentifier": "256" },
+      "locations": [],
+      "notes": "Chosen by OpenSSL for the TLS 1.3 record layer (TLS_AES_256_GCM_SHA384); nothing in the code names it, so it can only appear from live telemetry."
+    },
+    {
+      "id": "alg-sha384",
+      "kind": "algorithm",
+      "name": "SHA-384",
+      "expectedProvenance": "observed",
+      "expected": { "primitive": "hash", "algorithmFamily": "SHA-2", "parameterSetIdentifier": "384" },
+      "locations": [],
+      "notes": "Handshake hash of TLS_AES_256_GCM_SHA384; observable only from telemetry."
+    },
+    {
+      "id": "proto-tls13",
+      "kind": "protocol",
+      "name": "TLS 1.3",
+      "expectedProvenance": "declared",
+      "locations": ["pqc-sidecar/src/sidecar/server.ts", "pqc-sidecar/src/main.ts", "pqc-sidecar/src/peers/client.ts", "pqc-sidecar/src/bench/harness.ts", "pqc-sidecar/src/bench/server-process.ts"],
+      "notes": "The only version the sidecar accepts (minVersion and maxVersion TLSv1.3)."
+    },
+    {
+      "id": "cert-ca",
+      "kind": "certificate",
+      "name": "X.509 certificate CN=PQ Banking Research Test CA",
+      "expectedProvenance": "declared",
+      "locations": ["pqc-sidecar/.secrets/pki/ca.pem"]
+    },
+    {
+      "id": "cert-sidecar",
+      "kind": "certificate",
+      "name": "X.509 certificate CN=pqc-sidecar",
+      "expectedProvenance": "declared",
+      "locations": ["pqc-sidecar/.secrets/pki/sidecar/server.pem"]
+    },
+    {
+      "id": "cert-hybrid-bank",
+      "kind": "certificate",
+      "name": "X.509 certificate CN=hybrid-bank",
+      "expectedProvenance": "declared",
+      "locations": ["pqc-sidecar/.secrets/pki/peers/hybrid-bank/cert.pem"]
+    },
+    {
+      "id": "cert-legacy-psp",
+      "kind": "certificate",
+      "name": "X.509 certificate CN=legacy-psp",
+      "expectedProvenance": "declared",
+      "locations": ["pqc-sidecar/.secrets/pki/peers/legacy-psp/cert.pem"]
+    },
+    {
+      "id": "cert-strict-bank",
+      "kind": "certificate",
+      "name": "X.509 certificate CN=strict-bank",
+      "expectedProvenance": "declared",
+      "locations": ["pqc-sidecar/.secrets/pki/peers/strict-bank/cert.pem"]
+    },
+    {
+      "id": "cert-unregistered-peer",
+      "kind": "certificate",
+      "name": "X.509 certificate CN=unregistered-peer",
+      "expectedProvenance": "declared",
+      "locations": ["pqc-sidecar/.secrets/pki/peers/unregistered-peer/cert.pem"]
+    },
+    {
+      "id": "cert-rogue",
+      "kind": "certificate",
+      "name": "X.509 certificate CN=rogue",
+      "expectedProvenance": "declared",
+      "locations": ["pqc-sidecar/.secrets/pki/peers/rogue/cert.pem"],
+      "notes": "Self-signed certificate that is deliberately NOT trusted; used for negative tests."
+    },
+    {
+      "id": "mat-jwt-key",
+      "kind": "related-crypto-material",
+      "name": "JWT signing key (Ed25519 private key)",
+      "expectedProvenance": "declared",
+      "locations": ["scripts/setup.mjs", "ledger-service/.env.example", "ledger-service/src/compose.ts", "ledger-service/src/identity/tokens.ts"]
+    },
+    {
+      "id": "mat-sidecar-tls-key",
+      "kind": "related-crypto-material",
+      "name": "Sidecar TLS server private key",
+      "expectedProvenance": "declared",
+      "locations": ["pqc-sidecar/.env.example", "pqc-sidecar/src/pki/cli.ts", "pqc-sidecar/src/main.ts"]
+    },
+    {
+      "id": "mat-ca-key",
+      "kind": "related-crypto-material",
+      "name": "Peer CA private key",
+      "expectedProvenance": "declared",
+      "locations": ["pqc-sidecar/src/pki/cli.ts"]
+    },
+    {
+      "id": "mat-peer-keys",
+      "kind": "related-crypto-material",
+      "name": "Simulated peer private keys",
+      "expectedProvenance": "declared",
+      "locations": ["pqc-sidecar/src/pki/cli.ts", "pqc-sidecar/src/peers/simulator-main.ts"],
+      "notes": "Held only by the peer simulator process; never given to security-service."
+    },
+    {
+      "id": "mat-assertion-secret",
+      "kind": "related-crypto-material",
+      "name": "Peer assertion HMAC secret",
+      "expectedProvenance": "declared",
+      "locations": ["scripts/setup.mjs", "ledger-service/.env.example", "pqc-sidecar/.env.example", "pqc-sidecar/src/sidecar/assertion.ts", "ledger-service/src/partner/assertion.ts"]
+    },
+    {
+      "id": "mat-sidecar-token",
+      "kind": "related-crypto-material",
+      "name": "Sidecar service token",
+      "expectedProvenance": "declared",
+      "locations": ["scripts/setup.mjs", "pqc-sidecar/.env.example", "security-service/.env.example", "security-service/src/http/routes/internal-routes.ts"]
+    },
+    {
+      "id": "mat-bench-token",
+      "kind": "related-crypto-material",
+      "name": "Benchmark ingestion token",
+      "expectedProvenance": "declared",
+      "locations": ["scripts/setup.mjs", "security-service/.env.example"]
+    },
+    {
+      "id": "mat-peer-sim-token",
+      "kind": "related-crypto-material",
+      "name": "Peer simulator token",
+      "expectedProvenance": "declared",
+      "locations": ["scripts/setup.mjs", "security-service/.env.example", "pqc-sidecar/.env.example", "pqc-sidecar/src/peers/simulator-main.ts", "security-service/src/http/routes/experiment-routes.ts"]
+    },
+    {
+      "id": "mat-refresh-token",
+      "kind": "related-crypto-material",
+      "name": "Refresh token",
+      "expectedProvenance": "declared",
+      "locations": ["ledger-service/src/identity/tokens.ts"]
+    },
+    {
+      "id": "mat-access-token",
+      "kind": "related-crypto-material",
+      "name": "Access token (EdDSA JWT)",
+      "expectedProvenance": "declared",
+      "locations": ["ledger-service/src/identity/tokens.ts", "security-service/src/auth/verifier.ts"]
+    },
+    {
+      "id": "mat-password-hash",
+      "kind": "related-crypto-material",
+      "name": "Stored password hash (scrypt)",
+      "expectedProvenance": "declared",
+      "locations": ["ledger-service/src/identity/password.ts", "ledger-service/migrations/0002_identity_audit.sql"]
+    },
+    {
+      "id": "mat-audit-chain",
+      "kind": "related-crypto-material",
+      "name": "Audit hash chain (SHA-256 digests)",
+      "expectedProvenance": "declared",
+      "locations": ["ledger-service/src/audit/chain.ts", "security-service/src/audit/chain.ts"]
+    }
+  ]
+}

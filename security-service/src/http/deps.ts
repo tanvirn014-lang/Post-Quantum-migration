@@ -6,6 +6,7 @@ import type { ConfigRepository } from "../repos/config.js";
 import type { PeerRepository } from "../repos/peers.js";
 import type { SidecarRepository } from "../repos/sidecars.js";
 import type { TelemetryRepository } from "../repos/telemetry.js";
+import type { CbomService } from "../services/cbom-service.js";
 import type { ConfigService } from "../services/config-service.js";
 import type { Guards } from "./guards.js";
 
@@ -19,6 +20,7 @@ export interface ServerDeps {
   telemetryRepo: TelemetryRepository;
   sidecarsRepo: SidecarRepository;
   configService: ConfigService;
+  cbomService: CbomService;
 }
 
 export interface RouteDeps extends ServerDeps {

@@ -8,3 +8,4 @@ import "./telemetry.test.js";
 import "./audit.test.js";
 import "./access.test.js";
 import "./experiments.test.js";
+import "./cbom.test.js";

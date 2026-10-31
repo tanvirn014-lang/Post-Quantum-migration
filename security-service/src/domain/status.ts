@@ -113,10 +113,15 @@ export const COMPONENTS: readonly ComponentStatus[] = [
   {
     id: "cbom",
     name: "CBOM generator, validation and ground-truth comparison",
-    status: "PLANNED",
-    summary: "CycloneDX cryptographic bill of materials from declared and observed sources.",
-    evidence: [],
-    limitations: ["Completeness is only defined against a scoped manual ground truth; this is not full cryptographic discovery."],
+    status: "LIVE",
+    summary: "CycloneDX 1.7 cryptographic bill of materials built from a hand-maintained usage register, public certificate files, an allow-listed dependency scan and observed handshake telemetry; validated against the official schema and compared with a scoped ground truth (TP/FP/FN, completeness, precision).",
+    evidence: ["security-service/tests/cbom.test.ts", "security-service/ground-truth/cbom-ground-truth.json", "security-service/schemas/cyclonedx-1.7/MANIFEST.md"],
+    limitations: [
+      "Completeness is only defined against a scoped manual ground truth; this is not full cryptographic discovery.",
+      "Declared usage comes from a maintained register (tokens re-checked in files), not source-code analysis; hard-coded or dynamic use outside the register is invisible unless it shows up in telemetry.",
+      "The ground truth was prepared by an AI assistant by manual inspection, by the same agent that wrote the generator; a human reviewer must confirm it before any research claim.",
+      "Certificates and token signatures are inventoried as classical (ECDSA / EdDSA); the inventory says nothing about quantum safety.",
+    ],
   },
   {
     id: "hndl-simulator",

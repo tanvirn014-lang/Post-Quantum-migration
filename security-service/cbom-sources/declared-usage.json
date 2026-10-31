@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "description": "Cryptographic usage DECLARED by the maintainers (a hand-maintained register, not discovery). The generator does not find anything here: it reads each entry and only checks that every listed token still appears in its file. Usage that is not listed here and not derivable from the other declared sources (certificate files, dependency manifests, active TLS profile) is invisible to the CBOM - which is exactly what the ground-truth comparison measures.",
+  "algorithms": [
+    {
+      "name": "X25519",
+      "description": "Classical ECDH key agreement; the classical component of the hybrid TLS group and the fallback group for classical-allowed peers.",
+      "primitive": "key-agree",
+      "algorithmFamily": "ECDH",
+      "ellipticCurve": "other/Curve25519",
+      "oid": "1.3.101.110",
+      "cryptoFunctions": ["keygen", "keyderive"],
+      "classicalSecurityLevel": 128,
+      "nistQuantumSecurityLevel": 0,
+      "locations": [
+        { "path": "pqc-sidecar/src/wire/groups.ts", "token": "X25519" },
+        { "path": "security-service/src/domain/crypto.ts", "token": "X25519" }
+      ]
+    },
+    {
+      "name": "ML-KEM-768",
+      "description": "Post-quantum key-encapsulation mechanism (FIPS 203); the post-quantum component of the hybrid TLS group.",
+      "primitive": "kem",
+      "algorithmFamily": "ML-KEM",
+      "parameterSetIdentifier": "768",
+      "oid": "2.16.840.1.101.3.4.4.2",
+      "cryptoFunctions": ["keygen", "encapsulate", "decapsulate"],
+      "nistQuantumSecurityLevel": 3,
+      "locations": [
+        { "path": "pqc-sidecar/src/wire/groups.ts", "token": "MLKEM768" },
+        { "path": "security-service/src/domain/crypto.ts", "token": "MLKEM768" }
+      ]
+    },
+    {
+      "name": "X25519MLKEM768",
+      "description": "Hybrid key agreement group for TLS 1.3 (RFC 10024): an X25519 share and an ML-KEM-768 share combined by the TLS key schedule. Protects key establishment only on connections that negotiate it.",
+      "primitive": "kem",
+      "cryptoFunctions": ["keygen", "encapsulate", "decapsulate", "keyderive"],
+      "locations": [
+        { "path": "pqc-sidecar/src/wire/groups.ts", "token": "X25519MLKEM768" },
+        { "path": "security-service/src/domain/crypto.ts", "token": "X25519MLKEM768" }
+      ]
+    },
+    {
+      "name": "ECDSA-P256-SHA256",
+      "description": "Classical signature scheme used for every certificate in the research PKI. Certificate authentication is NOT post-quantum.",
+      "primitive": "signature",
+      "algorithmFamily": "ECDSA",
+      "ellipticCurve": "nist/P-256",
+      "oid": "1.2.840.10045.4.3.2",
+      "cryptoFunctions": ["sign", "verify"],
+      "classicalSecurityLevel": 128,
+      "nistQuantumSecurityLevel": 0,
+      "locations": [{ "path": "pqc-sidecar/src/pki/generate.ts", "token": "ECDSA" }]
+    },
+    {
+      "name": "EdDSA-Ed25519",
+      "description": "Classical signature scheme used to sign and verify access tokens (JWT, alg EdDSA). Token signatures are NOT post-quantum.",
+      "primitive": "signature",
+      "algorithmFamily": "EdDSA",
+      "ellipticCurve": "other/Ed25519",
+      "oid": "1.3.101.112",
+      "cryptoFunctions": ["sign", "verify"],
+      "classicalSecurityLevel": 128,
+      "nistQuantumSecurityLevel": 0,
+      "locations": [
+        { "path": "ledger-service/src/identity/tokens.ts", "token": "EdDSA" },
+        { "path": "security-service/src/auth/verifier.ts", "token": "EdDSA" }
+      ]
+    },
+    {
+      "name": "scrypt",
+      "description": "Password hashing for user credentials (N=2^15, r=8, p=1, 16-byte random salt).",
+      "primitive": "kdf",
+      "algorithmFamily": "scrypt",
+      "oid": "1.3.6.1.4.1.11591.4.11",
+      "cryptoFunctions": ["keyderive"],
+      "locations": [{ "path": "ledger-service/src/identity/password.ts", "token": "scrypt" }]
+    },
+    {
+      "name": "SHA-256",
+      "description": "Hash function for the tamper-evident audit hash chain.",
+      "primitive": "hash",
+      "algorithmFamily": "SHA-2",
+      "parameterSetIdentifier": "256",
+      "oid": "2.16.840.1.101.3.4.2.1",
+      "cryptoFunctions": ["digest"],
+      "locations": [
+        { "path": "ledger-service/src/audit/chain.ts", "token": "sha256" },
+        { "path": "security-service/src/audit/chain.ts", "token": "sha256" }
+      ]
+    },
+    {
+      "name": "HMAC-SHA256",
+      "description": "Message authentication for the signed peer assertion the sidecar attaches to forwarded requests.",
+      "primitive": "mac",
+      "algorithmFamily": "HMAC",
+      "parameterSetIdentifier": "256",
+      "oid": "1.2.840.113549.2.9",
+      "cryptoFunctions": ["tag", "verify"],
+      "locations": [{ "path": "pqc-sidecar/src/sidecar/assertion.ts", "token": "sha256" }]
+    }
+  ],
+  "protocols": [
+    {
+      "name": "TLS 1.3",
+      "description": "The only protocol version the sidecar accepts (minVersion and maxVersion TLSv1.3). Key-agreement groups come from the active TLS profile; cipher suites are those observed on live connections.",
+      "type": "tls",
+      "version": "1.3",
+      "locations": [{ "path": "pqc-sidecar/src/sidecar/server.ts", "token": "TLSv1.3" }]
+    }
+  ],
+  "materials": [
+    {
+      "name": "JWT signing key (Ed25519 private key)",
+      "type": "private-key",
+      "format": "PKCS#8 PEM",
+      "description": "Signs access tokens. Declared by configuration only; the key file is never opened by this generator.",
+      "locations": [{ "path": "ledger-service/.env.example", "token": "JWT_PRIVATE_KEY_FILE" }]
+    },
+    {
+      "name": "Sidecar TLS server private key",
+      "type": "private-key",
+      "format": "PKCS#8 PEM",
+      "description": "Private key for the sidecar's classical (ECDSA P-256) server certificate. Declared by configuration only.",
+      "locations": [{ "path": "pqc-sidecar/.env.example", "token": "TLS_KEY_FILE" }]
+    },
+    {
+      "name": "Peer CA private key",
+      "type": "private-key",
+      "format": "PKCS#8 PEM",
+      "description": "Test CA key that issues the server and peer certificates; stays on the machine that ran the PKI generator.",
+      "locations": [{ "path": "pqc-sidecar/src/pki/cli.ts", "token": "ca.key.pem" }]
+    },
+    {
+      "name": "Peer assertion HMAC secret",
+      "type": "secret-key",
+      "description": "Shared secret (min 32 chars) between the sidecar and the core for the signed peer assertion.",
+      "locations": [{ "path": "pqc-sidecar/.env.example", "token": "SIDECAR_ASSERTION_SECRET" }]
+    },
+    {
+      "name": "Sidecar service token",
+      "type": "token",
+      "description": "Bearer credential the sidecar uses for the security-service internal API.",
+      "locations": [{ "path": "pqc-sidecar/.env.example", "token": "SIDECAR_TOKEN" }]
+    },
+    {
+      "name": "Refresh token",
+      "type": "token",
+      "description": "256-bit random refresh token; only its SHA-256 hash is stored.",
+      "locations": [{ "path": "ledger-service/src/identity/tokens.ts", "token": "generateRefreshToken" }]
+    }
+  ]
+}

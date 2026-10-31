@@ -4,7 +4,7 @@ import { SignJWT, importPKCS8, type JWK } from "jose";
 import type pg from "pg";
 import type { Role } from "../../src/auth/permissions.js";
 import { JwksTokenVerifier } from "../../src/auth/verifier.js";
-import { composeDeps } from "../../src/compose.js";
+import { composeDeps, type CbomOverrides } from "../../src/compose.js";
 import type { AppConfig } from "../../src/config.js";
 import { createPool, ensureDatabase, withDatabase } from "../../src/db/pool.js";
 import { applyMigrations } from "../../src/db/migrate.js";
@@ -32,7 +32,7 @@ export async function setupPool(): Promise<pg.Pool> {
 export async function resetDatabase(pool: pg.Pool): Promise<void> {
   await pool.query("ALTER TABLE audit_events DISABLE TRIGGER USER");
   try {
-    await pool.query("TRUNCATE peers, connection_events, sidecar_instances, config_applications, audit_events, config_changes RESTART IDENTITY");
+    await pool.query("TRUNCATE cbom_comparisons, cbom_documents, cbom_ground_truth, peers, connection_events, sidecar_instances, config_applications, audit_events, config_changes RESTART IDENTITY");
   } finally {
     await pool.query("ALTER TABLE audit_events ENABLE TRIGGER USER");
   }
@@ -71,7 +71,7 @@ export interface TestApp {
   sidecar: { authorization: string };
 }
 
-export async function createTestApp(pool: pg.Pool, overrides: Partial<AppConfig> = {}): Promise<TestApp> {
+export async function createTestApp(pool: pg.Pool, overrides: Partial<AppConfig> = {}, cbom: CbomOverrides = {}): Promise<TestApp> {
   const pem = generateKeyPairSync("ed25519").privateKey.export({ format: "pem", type: "pkcs8" }).toString();
   const privateKey = await importPKCS8(pem, "EdDSA");
   const jwk = createPublicKey(createPrivateKey(pem)).export({ format: "jwk" }) as JWK;
@@ -79,7 +79,7 @@ export async function createTestApp(pool: pg.Pool, overrides: Partial<AppConfig>
   const verifier = JwksTokenVerifier.local(keySet, ISSUER, AUDIENCE);
 
   const config = testConfig(overrides);
-  const deps = composeDeps(pool, config, verifier);
+  const deps = composeDeps(pool, config, verifier, undefined, cbom);
   const app = buildServer(deps, { logger: false });
 
   return {
