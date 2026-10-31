@@ -10,7 +10,8 @@
     "start:simulator": "node --env-file-if-exists=.env dist/src/peers/simulator-main.js",
     "pki": "npm run build && node --env-file-if-exists=.env dist/src/pki/cli.js",
     "test": "tsc -p tsconfig.json && node --test dist/tests/index.test.js",
-    "lint": "tsc --noEmit -p tsconfig.json"
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "bench": "npm run build && node --env-file-if-exists=.env dist/src/bench/cli.js"
   },
   "dependencies": {
     "@peculiar/x509": "^1.14.3",
