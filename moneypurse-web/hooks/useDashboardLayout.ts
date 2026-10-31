@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-export const WIDGET_IDS = ["accounts", "cashflow", "spending", "pots", "cards", "transactions"] as const;
+export const WIDGET_IDS = ["accounts", "transfer", "cashflow", "spending", "pots", "cards", "transactions"] as const;
 
 const STORAGE_KEY = "moneypurse.dashboard.layout.v1";
 

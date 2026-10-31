@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { DEMO_CUSTOMER_ACCOUNTS } from "../../lib/demo-accounts";
-import { usePostings, useTransactionDescriptions } from "../../hooks/useTransactions";
+import { useCustomerPostings, useTransactionDescriptions } from "../../hooks/useTransactions";
 import { aggregateByCategory } from "../../lib/aggregate-by-category";
 import { formatCurrency } from "../../lib/format";
 import { DashboardWidget } from "./DashboardWidget";
@@ -21,7 +20,7 @@ export function SpendingByCategoryChart({
   onToggleHidden: () => void;
 }) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const postingsQuery = usePostings(DEMO_CUSTOMER_ACCOUNTS.primary, 200);
+  const postingsQuery = useCustomerPostings(200);
   const postings = postingsQuery.data ?? [];
   const transactionIds = postings.map((p) => p.transactionId);
   const {

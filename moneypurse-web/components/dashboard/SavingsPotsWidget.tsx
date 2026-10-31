@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { DEMO_CUSTOMER_ACCOUNTS } from "../../lib/demo-accounts";
 import { useSavingsPots, type Pot } from "../../hooks/useSavingsPots";
+import { useSession } from "../../hooks/useSession";
+import { SimBadge } from "../ui/StatusBadge";
 import { formatCurrency } from "../../lib/format";
 import { DashboardWidget } from "./DashboardWidget";
 import { ProgressBar } from "../ui/ProgressBar";
@@ -18,7 +19,8 @@ export function SavingsPotsWidget({
   hidden: boolean;
   onToggleHidden: () => void;
 }) {
-  const query = useSavingsPots(DEMO_CUSTOMER_ACCOUNTS.primary);
+  const { user } = useSession();
+  const query = useSavingsPots(user?.customerId ?? "");
   const [addOpen, setAddOpen] = useState(false);
   const [localPots, setLocalPots] = useState<Pot[]>([]);
   const [name, setName] = useState("");
@@ -47,6 +49,7 @@ export function SavingsPotsWidget({
     <DashboardWidget
       id="pots"
       title="Savings Pots"
+      badge={<SimBadge what="Savings pots" />}
       editMode={editMode}
       hidden={hidden}
       onToggleHidden={onToggleHidden}

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DEMO_CUSTOMER_ACCOUNTS } from "../../lib/demo-accounts";
-import { usePostings, useTransactionDescriptions } from "../../hooks/useTransactions";
+import { useCustomerPostings, useTransactionDescriptions } from "../../hooks/useTransactions";
 import { formatCurrency, formatRelativeDate } from "../../lib/format";
 import { categorize } from "../../lib/categorize";
 import { DashboardWidget } from "./DashboardWidget";
@@ -21,7 +20,7 @@ export function RecentTransactionsWidget({
   onToggleHidden: () => void;
 }) {
   const [viewAllOpen, setViewAllOpen] = useState(false);
-  const postingsQuery = usePostings(DEMO_CUSTOMER_ACCOUNTS.primary, 200);
+  const postingsQuery = useCustomerPostings(200);
   const postings = postingsQuery.data ?? [];
   const transactionIds = postings.map((p) => p.transactionId);
   const {

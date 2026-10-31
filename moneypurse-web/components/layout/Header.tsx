@@ -1,25 +1,24 @@
-import { Avatar } from "../ui/Avatar";
-import { Badge } from "../ui/Badge";
 import { SmartSearch } from "../search/SmartSearch";
 import { AlertsDropdown } from "../alerts/AlertsDropdown";
+import { UserMenu } from "../auth/UserMenu";
 
 export interface HeaderProps {
   greeting: string;
-  lowBalance: boolean;
+  identity: string;
 }
 
-export function Header({ greeting, lowBalance }: HeaderProps) {
+export function Header({ greeting, identity }: HeaderProps) {
   return (
-    <header className="flex items-center justify-between px-6 py-4 border-b border-subtle">
-      <div>
+    <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 border-b border-subtle">
+      <div className="min-w-0">
         <p className="text-lg font-semibold text-primary">{greeting}</p>
-        {lowBalance && <Badge tone="warning">Low balance</Badge>}
+        {identity && <p className="truncate text-xs text-muted">{identity}</p>}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <SmartSearch />
         <AlertsDropdown />
-        <Avatar initials="MP" />
+        <UserMenu />
       </div>
     </header>
   );

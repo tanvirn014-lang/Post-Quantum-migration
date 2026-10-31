@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { DEMO_CUSTOMER_ACCOUNTS } from "../../lib/demo-accounts";
-import { usePostings } from "../../hooks/useTransactions";
+import { useCustomerPostings } from "../../hooks/useTransactions";
 import { aggregateCashFlow, type CashFlowPeriod } from "../../lib/aggregate-cash-flow";
 import { DashboardWidget } from "./DashboardWidget";
 import { Button } from "../ui/Button";
@@ -20,7 +19,7 @@ export function CashFlowChart({
   onToggleHidden: () => void;
 }) {
   const [period, setPeriod] = useState<CashFlowPeriod>("week");
-  const query = usePostings(DEMO_CUSTOMER_ACCOUNTS.primary, 200);
+  const query = useCustomerPostings(200);
 
   // `now` is only ever set client-side, after mount - aggregateCashFlow is never called
   // with a fresh Date() during server rendering, which Next's Cache Components flags as

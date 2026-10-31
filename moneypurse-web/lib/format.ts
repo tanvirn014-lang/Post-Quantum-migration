@@ -38,3 +38,16 @@ export function formatRelativeDate(iso: string, now: Date = new Date()): string 
   }
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date);
 }
+
+/**
+ * Parses what a person types into an amount field ("1250", "1,250.5", "0.99") into positive
+ * minor units (2 decimal places) as a string. Returns null for anything else - empty, zero,
+ * negative, more than two decimals, non-numeric, or absurdly large. Never goes through a float.
+ */
+export function parseAmountToMinorUnits(input: string): string | null {
+  const cleaned = input.trim().replace(/,/g, "");
+  const match = /^(\d{1,13})(?:\.(\d{1,2}))?$/.exec(cleaned);
+  if (!match) return null;
+  const minor = BigInt(match[1]!) * 100n + BigInt((match[2] ?? "").padEnd(2, "0") || "0");
+  return minor > 0n ? minor.toString() : null;
+}

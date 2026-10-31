@@ -6,6 +6,7 @@ import { SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { AppShell } from "../../components/layout/AppShell";
 import { AccountSummaryCards } from "../../components/dashboard/AccountSummaryCards";
+import { TransferWidget } from "../../components/dashboard/TransferWidget";
 import { CashFlowChart } from "../../components/dashboard/CashFlowChart";
 import { SpendingByCategoryChart } from "../../components/dashboard/SpendingByCategoryChart";
 import { SavingsPotsWidget } from "../../components/dashboard/SavingsPotsWidget";
@@ -24,6 +25,7 @@ interface WidgetProps {
 
 const WIDGET_COMPONENTS: Record<string, ComponentType<WidgetProps>> = {
   accounts: AccountSummaryCards,
+  transfer: TransferWidget,
   cashflow: CashFlowChart,
   spending: SpendingByCategoryChart,
   pots: SavingsPotsWidget,

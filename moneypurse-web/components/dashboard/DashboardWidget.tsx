@@ -16,6 +16,8 @@ export interface DashboardWidgetProps {
   hidden: boolean;
   onToggleHidden: () => void;
   query: DashboardWidgetQueryState;
+  /** Optional marker next to the title, e.g. a SIM badge for panels with no live backend. */
+  badge?: ReactNode;
   children: ReactNode;
 }
 
@@ -24,7 +26,7 @@ export interface DashboardWidgetProps {
  * retry state on error, and hide/show affordances in edit mode. One React Query failure
  * never takes down a sibling widget, since each widget owns its own query state.
  */
-export function DashboardWidget({ id, title, editMode, hidden, onToggleHidden, query, children }: DashboardWidgetProps) {
+export function DashboardWidget({ id, title, editMode, hidden, onToggleHidden, query, badge, children }: DashboardWidgetProps) {
   if (hidden && !editMode) {
     return null;
   }
@@ -32,7 +34,10 @@ export function DashboardWidget({ id, title, editMode, hidden, onToggleHidden, q
   return (
     <Card className={`p-4 flex flex-col gap-3 ${hidden ? "opacity-40" : ""}`}>
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-muted uppercase tracking-wide">{title}</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-muted uppercase tracking-wide">{title}</h2>
+          {badge}
+        </div>
         {editMode && (
           <Button variant="ghost" onClick={onToggleHidden} aria-label={hidden ? `Show ${id}` : `Hide ${id}`}>
             {hidden ? "Show" : "Hide"}

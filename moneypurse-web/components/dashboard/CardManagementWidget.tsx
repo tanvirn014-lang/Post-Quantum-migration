@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { DEMO_CUSTOMER_ACCOUNTS } from "../../lib/demo-accounts";
 import { useCards } from "../../hooks/useCards";
+import { useSession } from "../../hooks/useSession";
+import { SimBadge } from "../ui/StatusBadge";
 import { formatCurrency } from "../../lib/format";
 import { DashboardWidget } from "./DashboardWidget";
 import { Badge } from "../ui/Badge";
@@ -17,7 +18,8 @@ export function CardManagementWidget({
   hidden: boolean;
   onToggleHidden: () => void;
 }) {
-  const query = useCards(DEMO_CUSTOMER_ACCOUNTS.primary);
+  const { user } = useSession();
+  const query = useCards(user?.customerId ?? "");
   const [frozenOverride, setFrozenOverride] = useState<Record<string, boolean>>({});
   const card = query.data?.[0];
   const frozen = card ? frozenOverride[card.id] ?? card.frozen : false;
@@ -26,6 +28,7 @@ export function CardManagementWidget({
     <DashboardWidget
       id="cards"
       title="Card"
+      badge={<SimBadge what="Card controls" />}
       editMode={editMode}
       hidden={hidden}
       onToggleHidden={onToggleHidden}

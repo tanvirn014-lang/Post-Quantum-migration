@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { Command } from "cmdk";
-import { DEMO_CUSTOMER_ACCOUNTS } from "../../lib/demo-accounts";
-import { usePostings, useTransactionDescriptions } from "../../hooks/useTransactions";
+import { useCustomerPostings, useTransactionDescriptions } from "../../hooks/useTransactions";
 import { useSearchSuggestions } from "../../hooks/useSearchSuggestions";
 import { formatCurrency } from "../../lib/format";
+import { SimBadge } from "../ui/StatusBadge";
 
 export function SmartSearch() {
   const [open, setOpen] = useState(false);
@@ -23,7 +23,7 @@ export function SmartSearch() {
   }, []);
 
   const suggestionsQuery = useSearchSuggestions(query);
-  const postingsQuery = usePostings(DEMO_CUSTOMER_ACCOUNTS.primary, 200);
+  const postingsQuery = useCustomerPostings(200);
   const postings = postingsQuery.data ?? [];
   const { descriptionsByTransactionId } = useTransactionDescriptions(postings.map((p) => p.transactionId));
 
@@ -37,7 +37,7 @@ export function SmartSearch() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-64 rounded-lg bg-surface-overlay px-3 py-1.5 text-left text-sm text-muted"
+        className="w-40 sm:w-64 rounded-lg bg-surface-overlay px-3 py-1.5 text-left text-sm text-muted"
       >
         Search... <span className="float-right text-xs opacity-60">⌘K</span>
       </button>
@@ -74,7 +74,14 @@ export function SmartSearch() {
           )}
 
           {(suggestionsQuery.data ?? []).length > 0 && (
-            <Command.Group heading="Suggestions" className="text-xs text-muted px-2 py-1">
+            <Command.Group
+              heading={
+                <span className="flex items-center gap-2">
+                  Suggestions <SimBadge what="Search suggestions" />
+                </span>
+              }
+              className="text-xs text-muted px-2 py-1"
+            >
               {(suggestionsQuery.data ?? []).map((s) => (
                 <Command.Item
                   key={s.id}
