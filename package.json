@@ -18,6 +18,10 @@
     "dev:sidecar": "npm --prefix pqc-sidecar run start",
     "dev:simulator": "npm --prefix pqc-sidecar run start:simulator",
     "test:sidecar": "npm --prefix pqc-sidecar test",
-    "register-peers": "node scripts/register-sim-peers.mjs"
+    "register-peers": "node scripts/register-sim-peers.mjs",
+    "test:all": "npm run test:ledger && npm run test:security && npm run test:sidecar && npm run test:web",
+    "bench": "npm --prefix pqc-sidecar run bench --",
+    "e2e": "node scripts/e2e.mjs",
+    "claim-audit": "node scripts/claim-audit.mjs"
   }
 }

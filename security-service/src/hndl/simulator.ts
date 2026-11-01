@@ -13,7 +13,7 @@
 import * as nodeCrypto from "node:crypto";
 import { type KeyObject, createCipheriv, createDecipheriv, diffieHellman, generateKeyPairSync, hkdfSync, randomBytes } from "node:crypto";
 
-// ML-KEM is in Node's crypto since v24.7 / OpenSSL 3.5, but the pinned @types/node predates it.
+// ML-KEM is available in node:crypto on the Node 26.4 / OpenSSL 3.5.7 used here, but the pinned @types/node predates it.
 interface MlKemApi {
   generateKeyPairSync(type: "ml-kem-768"): { publicKey: KeyObject; privateKey: KeyObject };
   encapsulate(publicKey: KeyObject): { sharedKey: Buffer; ciphertext: Buffer };
