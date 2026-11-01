@@ -61,11 +61,13 @@ export async function composeApplication(config: AppConfig): Promise<Application
     stores = { ledger: new MemoryLedgerStore(memoryAudit), identity: new MemoryIdentityStore(), audit: memoryAudit };
   }
 
+  const additionalPublicKeyPems = await Promise.all(config.jwtAdditionalPublicKeyFiles.map((file) => readFile(file, "utf8")));
   const tokens = await TokenService.create({
     privateKeyPem: await loadSigningKeyPem(config),
     issuer: config.jwtIssuer,
     audience: config.jwtAudience,
     accessTtlSeconds: config.accessTokenTtlSeconds,
+    ...(additionalPublicKeyPems.length > 0 ? { additionalPublicKeyPems } : {}),
   });
   const audit = new AuditService(stores.audit);
   const supabase = config.supabaseUrl

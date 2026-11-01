@@ -11,11 +11,15 @@ export interface AccessTokenClaims {
 }
 
 export interface TokenServiceOptions {
-  /** PKCS#8 PEM of an Ed25519 private key. */
+  /** PKCS#8 PEM of the ACTIVE Ed25519 signing key (new tokens are signed with this). */
   privateKeyPem: string;
   issuer: string;
   audience: string;
   accessTtlSeconds: number;
+  /** SPKI PEMs of PREVIOUS public keys, kept in the JWKS for verification only so tokens signed
+   *  just before a key rotation still verify until they expire. Drop a key here once no unexpired
+   *  token could have been signed with it (i.e. after accessTtlSeconds). */
+  additionalPublicKeyPems?: string[];
 }
 
 /**
@@ -29,15 +33,23 @@ export class TokenService {
     private readonly signingKey: Awaited<ReturnType<typeof importPKCS8>>,
     private readonly publicJwk: JWK,
     private readonly verifyKeys: ReturnType<typeof createLocalJWKSet>,
+    private readonly allPublicJwks: JWK[],
   ) {}
+
+  private static async toPublicJwk(publicKeyPemOrObject: ReturnType<typeof createPublicKey>): Promise<JWK> {
+    const jwk = publicKeyPemOrObject.export({ format: "jwk" }) as JWK;
+    const kid = await calculateJwkThumbprint(jwk);
+    return { ...jwk, kid, alg: "EdDSA", use: "sig" };
+  }
 
   static async create(options: TokenServiceOptions): Promise<TokenService> {
     const signingKey = await importPKCS8(options.privateKeyPem, "EdDSA");
-    const publicKeyObject = createPublicKey(createPrivateKey(options.privateKeyPem));
-    const jwk = publicKeyObject.export({ format: "jwk" }) as JWK;
-    const kid = await calculateJwkThumbprint(jwk);
-    const publicJwk: JWK = { ...jwk, kid, alg: "EdDSA", use: "sig" };
-    return new TokenService(options, signingKey, publicJwk, createLocalJWKSet({ keys: [publicJwk] }));
+    const publicJwk = await TokenService.toPublicJwk(createPublicKey(createPrivateKey(options.privateKeyPem)));
+    // Previous public keys are kept for verification during a rotation window (sign with the active
+    // key only). jose selects the matching key by the token's `kid`.
+    const additional = await Promise.all((options.additionalPublicKeyPems ?? []).map((pem) => TokenService.toPublicJwk(createPublicKey(pem))));
+    const allPublicJwks = [publicJwk, ...additional];
+    return new TokenService(options, signingKey, publicJwk, createLocalJWKSet({ keys: allPublicJwks }), allPublicJwks);
   }
 
   async signAccessToken(user: { id: string; role: Role; customerId: string | null }): Promise<{ token: string; expiresIn: number }> {
@@ -72,7 +84,7 @@ export class TokenService {
   }
 
   jwks(): { keys: JWK[] } {
-    return { keys: [this.publicJwk] };
+    return { keys: this.allPublicJwks };
   }
 }
 

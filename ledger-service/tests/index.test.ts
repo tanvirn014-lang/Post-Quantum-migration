@@ -9,6 +9,7 @@ import "./app/identity-supabase.test.js";
 import "./app/ledger-audit-atomicity.test.js";
 import "./app/reconcile.test.js";
 import "./identity/crypto.test.js";
+import "./identity/key-rotation.test.js";
 import "./identity/supabase-verifier.test.js";
 import "./audit/chain.test.js";
 import "./http/api.test.js";

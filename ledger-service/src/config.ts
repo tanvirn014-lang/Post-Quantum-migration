@@ -19,6 +19,10 @@ const envSchema = z
 
     JWT_PRIVATE_KEY_FILE: z.string().optional(),
     JWT_PRIVATE_KEY: z.string().optional(),
+    /** Comma-separated SPKI PEM file paths of PREVIOUS JWT public keys, kept in the JWKS for
+     *  verification during a signing-key rotation window. Remove a key once accessTokenTtl has
+     *  elapsed since the rotation (no unexpired token can still carry it). */
+    JWT_ADDITIONAL_PUBLIC_KEY_FILES: z.string().optional(),
     JWT_ISSUER: z.string().default("pq-bank-ledger-service"),
     JWT_AUDIENCE: z.string().default("pq-bank-platform"),
     ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(600),
@@ -77,6 +81,7 @@ export interface AppConfig {
   corsOrigins: string[];
   jwtPrivateKeyFile: string | undefined;
   jwtPrivateKey: string | undefined;
+  jwtAdditionalPublicKeyFiles: string[];
   jwtIssuer: string;
   jwtAudience: string;
   accessTokenTtlSeconds: number;
@@ -111,6 +116,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     corsOrigins: e.CORS_ORIGIN.split(",").map((o) => o.trim()).filter((o) => o.length > 0),
     jwtPrivateKeyFile: e.JWT_PRIVATE_KEY_FILE,
     jwtPrivateKey: e.JWT_PRIVATE_KEY,
+    jwtAdditionalPublicKeyFiles: e.JWT_ADDITIONAL_PUBLIC_KEY_FILES
+      ? e.JWT_ADDITIONAL_PUBLIC_KEY_FILES.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
+      : [],
     jwtIssuer: e.JWT_ISSUER,
     jwtAudience: e.JWT_AUDIENCE,
     accessTokenTtlSeconds: e.ACCESS_TOKEN_TTL_SECONDS,
