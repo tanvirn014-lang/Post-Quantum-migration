@@ -31,6 +31,10 @@ npm run register-peers # registers the simulated peers' certificate fingerprints
 Demo credentials are in `ledger-service/.secrets/demo-credentials.json`. Roles: customer (`/dashboard`), operator
 (`/operations`), security_admin and auditor (`/security`). Accounts are test data created by the seed script.
 
+Customer self-registration (`/signup`) is backed by a hosted Supabase project and is optional: set
+`SUPABASE_URL` for ledger-service and `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` for the web app
+(see the `.env*.example` files and section 7). Unset, the local sign-in still works and `/signup` shows "not configured".
+
 ## 2. Verify everything
 
 ```bash
@@ -43,6 +47,10 @@ npm run claim-audit    # restricted-claim scan over docs, UI and API strings
 
 ## 3. Suggested demo path (about 15 minutes)
 
+0. **Customer sign-up** (`/signup`, only if Supabase is configured — section 7). Enter a name, a real email you can read,
+   and a password; Supabase emails a 6-digit code; enter it to finish. The new account lands on `/dashboard`. The core
+   provisions a local customer for the Supabase identity (`auth.external_provision` in the audit log). Staff still sign in
+   locally at `/login`.
 1. **Customer view** (`/dashboard`, sign in as a customer). Real balances and transactions. Savings pots, card controls and
    search suggestions are labelled SIM: they have no backend.
 2. **Security console** (`/security`, sign in as security_admin).
@@ -74,9 +82,36 @@ rate exceeds 0.5% is flagged INVALID, written to disk, and never published. `--p
 ## 5. What to say, and what not to
 
 Say: hybrid key establishment was verified on the wire for capable peers; classical fallback is an explicit, labelled,
-per-peer policy; everything marked SIM is a model; numbers are single-host loopback measurements.
+per-peer policy; everything marked SIM is a model; numbers are single-host loopback measurements. The Supabase sign-up is
+an add-on identity layer whose tokens are classical (ES256), and it adds no post-quantum protection.
 Do not say: that the system is quantum-resistant, that it was attacked, that it is production-ready or compliant, or
 that the CBOM covers all cryptography. `docs/CLAIM_LEDGER.md` lists each claim with its evidence and limits.
+
+## 7. Supabase setup (customer sign-up with email OTP)
+
+The add-on identity layer uses a hosted Supabase project. One-time setup in the Supabase dashboard:
+
+1. **Project → Settings → API.** Copy the **Project URL** (base, e.g. `https://<ref>.supabase.co` — not the
+   `/rest/v1` endpoint) and the **anon / public** key. Under **JWT Keys**, confirm the project signs user tokens with
+   **asymmetric keys (ECC/ES256)** so there is a public JWKS; no secret or service-role key is used here.
+2. **Authentication → Providers → Email:** enable it with **"Confirm email" on**.
+3. **Authentication → Email Templates → "Confirm signup":** make sure the template includes the code token
+   `{{ .Token }}` (not only the magic-link `{{ .ConfirmationURL }}`), so step 2 of sign-up is a 6-digit code entry.
+4. **Authentication → URL Configuration:** add the web origin (`http://localhost:3100`) to the allowed redirect/site URLs.
+
+Then put the values in the git-ignored env files (templates in the `.env*.example` files):
+
+```bash
+# ledger-service/.env
+SUPABASE_URL=https://<ref>.supabase.co
+# moneypurse-web/.env.local
+NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-public-key>
+```
+
+The anon key is a public browser value by design. The core verifies Supabase tokens against the project's public JWKS,
+so it needs only `SUPABASE_URL`. Supabase's built-in email is rate-limited; it is adequate for a demo, not a production
+mailer. The end-to-end OTP email round trip is a manual/demo check (an external service), not part of `npm run test:all`.
 
 ## 6. Troubleshooting
 

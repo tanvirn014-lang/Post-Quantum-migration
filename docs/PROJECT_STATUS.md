@@ -48,6 +48,7 @@ didactic and performs no cryptanalysis.
 | CBOM generator (CycloneDX 1.7) + schema validation + ground-truth comparison | LIVE | `security-service/tests/cbom.test.ts` (42 tests); numbers in section 11 |
 | HNDL educational simulator + Mosca calculator | SIM | `security-service/tests/{hndl,research}.test.ts`; real primitives, modelled adversary, no cryptanalysis |
 | Benchmark harness + environment manifest; immutable evidence ingestion | LIVE | `pqc-sidecar/tests/bench.test.ts`, `security-service/tests/research.test.ts`; results in section 11 |
+| Supabase add-on identity layer: dual-step email-OTP customer sign-up, local customer provisioning, core accepts Supabase ES256 tokens (JWKS) alongside local tokens | LIVE (code) | `ledger-service/tests/{identity/supabase-verifier,app/identity-supabase,http/supabase-auth}.test.ts`; `moneypurse-web/tests/lib/auth/*`, `components/auth/SignupForm.test.tsx`. End-to-end OTP email delivery is a manual/demo check (external service), not in CI; tokens are classical ES256 |
 | ML-DSA / PQ certificates / JWT migration | PLANNED (out of scope) | proposal section 21 |
 
 ## 3. Decisions
@@ -109,6 +110,7 @@ didactic and performs no cryptanalysis.
 | 5 | CBOM, HNDL simulator, benchmark | done 2026-11-01 - 142 security-service tests; CBOM, HNDL, benchmark ingestion live (section 11) |
 | 6 | frontend auth + security console | done 2026-11-01 - auth gate, console pages, provenance badges, CBOM / HNDL / benchmarks / experiments pages; 166 web tests; research pages checked against live API responses, **not yet viewed in a browser** |
 | 7 | e2e validation, evidence, docs | done 2026-11-01 - e2e 50/50 (`evidence/e2e/`), clean benchmark run, claim ledger, traceability, runbook |
+| 8 | Supabase add-on identity + dual-step OTP sign-up | done 2026-11-01 - ledger 150 + web 209 tests green; spec `docs/superpowers/specs/2026-11-01-supabase-otp-auth-design.md`; design decisions in section 3; hosted OTP email round trip verified manually, not in CI |
 
 ## 7. Stage 1 findings (security defects in the pre-existing backend, now fixed)
 

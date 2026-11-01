@@ -60,6 +60,37 @@ describe(
       );
     });
 
+    it("provisions a Supabase-linked customer, finds it by supabase id, and refuses a duplicate id", async () => {
+      const supabaseUserId = randomUUID();
+      const email = `supa-${randomUUID().slice(0, 6)}@bank.test`;
+      const { customer, user } = await identity.provisionExternalCustomer({ supabaseUserId, email, fullName: "Supa User", passwordHash: "unusable" });
+      assert.strictEqual(user.role, "customer");
+      assert.strictEqual(user.customerId, customer.id);
+      assert.strictEqual(user.supabaseUserId, supabaseUserId);
+
+      const found = await identity.findUserBySupabaseId(supabaseUserId);
+      assert.strictEqual(found!.id, user.id);
+      assert.strictEqual(await identity.findUserBySupabaseId(randomUUID()), null);
+
+      // The partial unique index forbids two local users sharing one Supabase identity.
+      await assert.rejects(
+        identity.provisionExternalCustomer({ supabaseUserId, email: `other-${randomUUID().slice(0, 6)}@bank.test`, fullName: "Dup", passwordHash: "x" }),
+        { code: "EMAIL_ALREADY_REGISTERED" },
+      );
+      assert.strictEqual((await identity.listUsers()).length, 1, "the failed provision must not leave an orphan user");
+    });
+
+    it("links an existing local customer to a Supabase identity", async () => {
+      const email = `link-${randomUUID().slice(0, 6)}@bank.test`;
+      const { user } = await identity.createCustomerWithUser({ fullName: "Local", email }, { email, passwordHash: "h", mustChangePassword: false });
+      assert.strictEqual(user.supabaseUserId, null);
+
+      const supabaseUserId = randomUUID();
+      const linked = await identity.linkSupabaseUser(user.id, supabaseUserId);
+      assert.strictEqual(linked!.supabaseUserId, supabaseUserId);
+      assert.strictEqual((await identity.findUserBySupabaseId(supabaseUserId))!.id, user.id);
+    });
+
     it("counts failures atomically and locks at the threshold", async () => {
       const user = await staff("lock@bank.test");
       const now = new Date();

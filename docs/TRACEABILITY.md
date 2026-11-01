@@ -12,6 +12,16 @@ Status of each row is stated plainly: **covered** (mechanism built and tested), 
 | **T-05** Cryptographic supply-chain risk | R-05 Record versions and approved provider source; verify provenance and checksums where available | `package-lock.json` pins dependencies with npm integrity hashes; the benchmark manifest records Node, OpenSSL, CPU, OS, commit and dirty flag; the CBOM scans dependency manifests for cryptographic libraries; evidence files carry SHA-256 checksums and are kept byte-exact (`.gitattributes`) | `pqc-sidecar/tests/bench.test.ts` (manifest), `security-service/tests/cbom.test.ts` (dependency scan, schema hash check) | `evidence/bench/*/manifest.json`, `checksums.sha256`; CBOM documents | **Partly covered:** no signature or provenance verification of npm packages beyond lockfile integrity; no reproducible-build check; OpenSSL version is whatever the Node binary embeds |
 | **T-06** Future compromise of classical or PQ signatures | R-06 Avoid implying PQ authentication; state that certificates remain classical | Certificates are ECDSA P-256 and tokens EdDSA; the CBOM inventories them as classical; every status entry, the console notice and the claim ledger state the boundary | `security-service/tests/{status,cbom}.test.ts` (no restricted claim language, certificates inventoried as classical); `node scripts/claim-audit.mjs` | CBOM certificate assets; claim ledger section 3 | **Boundary documented:** no PQ signatures, PKI migration or JWT migration (out of scope, proposal section 21) |
 
+## Extension beyond the proposal: Supabase add-on identity layer
+
+Not one of the proposal's threats. A hosted Supabase project provides customer sign-up/login with a dual-step email
+OTP; the core verifies the Supabase ES256 token against the project's public JWKS and provisions a local customer,
+while RBAC, ownership and the audit chain stay local (relates to R-04). Staff and the e2e harness keep the local login.
+Mechanism: `ledger-service/src/adapters/supabase/verifier.ts`, `IdentityService.authenticate`. Tests:
+`ledger-service/tests/{identity/supabase-verifier,app/identity-supabase,http/supabase-auth}.test.ts` and
+`moneypurse-web/tests/lib/auth/*`. **Boundary:** tokens are classical ES256 (no PQ protection); end-to-end OTP email
+delivery is an external service, checked manually in a demo, not in CI.
+
 ## Experiments
 
 | Experiment | Where | Evidence |

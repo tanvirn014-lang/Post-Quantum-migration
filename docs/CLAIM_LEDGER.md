@@ -27,6 +27,7 @@ and the status registry test (`security-service/tests/status.test.ts`) which fai
 | C-13 | The HNDL simulator shows that a recorded classical X25519 session opens if its secret is assumed recoverable while a hybrid session does not unless ML-KEM is also assumed broken | SIMULATION | `security-service/tests/hndl.test.ts` | Real primitives, modelled adversary; no quantum computation, no cryptanalysis of any real key, no prediction |
 | C-14 | Hybrid adds 1176 B to the ClientHello record and 1088 B to the ServerHello record versus X25519 | MEASURED / H1 | `evidence/bench/2026-10-31T20-49-52-048Z-standard/` | Loopback capture of this implementation |
 | C-15 | Hybrid handshakes take about 0.27 ms longer than X25519 (95% CI 0.15 to 0.38 ms over 30 runs) | MEASURED / H2 | same directory | Single laptop, loopback, no network; no capacity or production-latency claim |
+| C-16 | Customers can self-register through a dual-step, email-OTP-confirmed sign-up backed by a hosted Supabase project; the core verifies the Supabase ES256 token against the project's public JWKS and provisions a local customer, keeping its own RBAC and audit chain | IMPLEMENTED (our code paths, tested offline) | `ledger-service/tests/{identity/supabase-verifier,app/identity-supabase,http/supabase-auth}.test.ts`; `moneypurse-web/tests/lib/auth/{signup-flow,customer-auth,supabase-gateway}.test.ts` and `components/auth/SignupForm.test.tsx` | Add-on identity layer, not a replacement for the local auth; Supabase tokens are classical ES256; the real OTP email round trip is an external service, verified manually, not in CI; staff still use local login |
 
 ## 2. Hypotheses (proposal section 13): outcome on this host
 
@@ -56,3 +57,4 @@ and the status registry test (`security-service/tests/status.test.ts`) which fai
 - The CBOM ground truth needs independent human review; HKDF and the benchmark/simulator service tokens are not yet in the usage register.
 - Cross-machine benchmark runs and Experiment D are not done.
 - Standards verification still required for any citation of RFC 10024 / IANA code points beyond what the tests observe on the wire.
+- The Supabase add-on identity layer is a hosted external dependency (customer sign-up/login and OTP email). Its ES256 tokens are classical, like the core's EdDSA tokens; it adds no post-quantum protection. End-to-end OTP email delivery is verified manually in a demo, not in CI. Staff and the e2e harness authenticate through the local path.
