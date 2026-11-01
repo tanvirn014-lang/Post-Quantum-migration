@@ -1,0 +1,113 @@
+name: CI
+
+# M0 regression gate for the Hybrid Post-Quantum Banking Migration Platform.
+# Runs the existing 617-test suite (real PostgreSQL + real TLS 1.3), the honesty
+# guards (claim-audit + per-service type-checks), dependency scanning and a
+# CycloneDX dependency SBOM. See docs/IMPLEMENTATION_PLAN.md (Milestone M0).
+#
+# Node 26 is required: X25519MLKEM768 / ML-KEM need OpenSSL >= 3.5, which the
+# Node 26 runtime embeds. Do not lower the Node version without checking OpenSSL.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "26"
+
+jobs:
+  tests:
+    name: Test suite (617) + e2e-less verification
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        # Mirrors ledger-service/docker-compose.yml: the ledger role is the
+        # container superuser, so the test helpers can create ledger_test /
+        # security_test databases themselves.
+        env:
+          POSTGRES_USER: ledger
+          POSTGRES_PASSWORD: ledger
+          POSTGRES_DB: ledger
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ledger"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Enables the Postgres-backed suites (security integration + ledger
+      # integration). The helpers derive their own *_test databases from this.
+      DATABASE_URL: postgres://ledger:ledger@localhost:5432/ledger
+      TEST_DATABASE_URL: postgres://ledger:ledger@localhost:5432/ledger
+    steps:
+      - uses: actions/checkout@v4
+      - name: Report runtime crypto capability
+        run: node -e "console.log('node', process.version, 'openssl', process.versions.openssl)"
+        # OpenSSL must be >= 3.5 for the hybrid group; the sidecar suite fails loudly otherwise.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install all workspaces
+        run: npm run install:all
+      - name: Run full test suite (ledger, security, sidecar, web)
+        run: npm run test:all
+
+  quality:
+    name: Honesty guards + type-checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install all workspaces
+        run: npm run install:all
+      - name: Restricted-claim audit (no over-claiming)
+        run: npm run claim-audit
+      - name: Type-check ledger-service
+        run: npm --prefix ledger-service run lint
+      - name: Type-check security-service
+        run: npm --prefix security-service run lint
+      - name: Type-check pqc-sidecar
+        run: npm --prefix pqc-sidecar run lint
+      - name: Lint web (non-blocking — ~393 pre-existing errors tracked for a later milestone)
+        run: npm --prefix moneypurse-web run lint
+        continue-on-error: true
+
+  supply-chain:
+    name: Dependency scan + SBOM
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [ledger-service, security-service, pqc-sidecar, moneypurse-web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install (${{ matrix.service }})
+        run: npm --prefix ${{ matrix.service }} ci || npm --prefix ${{ matrix.service }} install
+      - name: Audit — fail on critical (high reported, not yet blocking)
+        run: |
+          npm --prefix ${{ matrix.service }} audit --audit-level=critical
+          npm --prefix ${{ matrix.service }} audit --audit-level=high || echo "::warning::high-severity advisories in ${{ matrix.service }} (non-blocking)"
+      - name: Generate CycloneDX dependency SBOM
+        run: npx -y @cyclonedx/cyclonedx-npm@^1 --output-file "sbom-${{ matrix.service }}.json" --package-lock-only "${{ matrix.service }}/package.json"
+        continue-on-error: true
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.service }}
+          path: sbom-${{ matrix.service }}.json
+          if-no-files-found: ignore
