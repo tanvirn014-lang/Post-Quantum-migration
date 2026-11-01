@@ -12,6 +12,9 @@ export interface ServerDeps {
   audit: AuditService;
   tokens: TokenService;
   config: AppConfig;
+  /** Readiness probe: resolves when the backing store is reachable, rejects otherwise. Optional
+   *  (undefined is treated as ready, e.g. the in-memory store). The composition root supplies it. */
+  ping?: () => Promise<void>;
 }
 
 export interface RouteDeps extends ServerDeps {

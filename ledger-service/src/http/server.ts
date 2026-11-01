@@ -50,6 +50,12 @@ export function buildServer(deps: ServerDeps, opts: BuildServerOptions = {}): Fa
   app.addHook("onSend", async (req, reply) => {
     void reply.header("x-request-id", req.id);
   });
+  // Minimal dependency-free Prometheus metrics: a request counter by method and status.
+  const requestCounts = new Map<string, number>();
+  app.addHook("onResponse", async (req, reply) => {
+    const key = `${req.method}|${reply.statusCode}`;
+    requestCounts.set(key, (requestCounts.get(key) ?? 0) + 1);
+  });
 
   app.register(helmet, { crossOriginResourcePolicy: { policy: "same-site" } });
   app.register(cors, {
@@ -72,6 +78,25 @@ export function buildServer(deps: ServerDeps, opts: BuildServerOptions = {}): Fa
   const routeDeps = { ...deps, guards };
 
   app.get("/healthz", async () => ({ status: "ok" }));
+  app.get("/livez", async () => ({ status: "alive" }));
+  app.get("/readyz", async (_req, reply) => {
+    try {
+      if (deps.ping) await deps.ping();
+      return { status: "ready" };
+    } catch {
+      void reply.status(503);
+      return { status: "not-ready" };
+    }
+  });
+  app.get("/metrics", async (_req, reply) => {
+    let out = "# HELP http_requests_total Total HTTP requests handled.\n# TYPE http_requests_total counter\n";
+    for (const [key, count] of requestCounts) {
+      const [method, status] = key.split("|");
+      out += `http_requests_total{method="${method}",status="${status}"} ${count}\n`;
+    }
+    void reply.header("content-type", "text/plain; version=0.0.4; charset=utf-8");
+    return out;
+  });
 
   app.register(registerAuthRoutes(routeDeps));
   app.register(registerPeopleRoutes(routeDeps));

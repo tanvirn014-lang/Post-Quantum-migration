@@ -40,6 +40,8 @@ async function loadSigningKeyPem(config: AppConfig): Promise<string> {
 export async function composeApplication(config: AppConfig): Promise<Application> {
   let stores: Application["stores"];
   let closePool: () => Promise<void> = async () => {};
+  // Readiness probe: in-memory is always ready; Postgres pings the pool.
+  let ping: () => Promise<void> = async () => {};
 
   if (config.ledgerStore === "postgres") {
     const pool = createPool(config.databaseUrl, config.pgPoolMax);
@@ -49,6 +51,7 @@ export async function composeApplication(config: AppConfig): Promise<Application
       audit: new PostgresAuditStore(pool),
     };
     closePool = () => pool.end();
+    ping = () => pool.query("SELECT 1").then(() => undefined);
   } else {
     console.warn(
       "LEDGER_STORE=memory - using in-process stores. Nothing persists across restarts and this is " +
@@ -88,7 +91,7 @@ export async function composeApplication(config: AppConfig): Promise<Application
   });
 
   return {
-    deps: { ledger: new LedgerService(stores.ledger), identity, audit, tokens, config },
+    deps: { ledger: new LedgerService(stores.ledger), identity, audit, tokens, config, ping },
     stores,
     close: closePool,
   };

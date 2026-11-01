@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import http from "node:http";
+import { adminResponse } from "./admin.js";
 import os from "node:os";
 import pino from "pino";
 import { loadConfig } from "./config.js";
@@ -67,9 +68,17 @@ async function main(): Promise<void> {
 
   const admin = http.createServer((req, res) => {
     const status = sidecar.status();
-    const body = req.url === "/healthz" ? { status: status.ready ? "ok" : "starting" } : req.url === "/status" ? { ...status, controlPlane: { lastConfigSuccessAt: configClient.lastSuccessAt?.toISOString() ?? null, consecutiveFailures: configClient.consecutiveFailures, telemetryQueued: telemetry.queued, telemetryDropped: telemetry.dropped } } : null;
-    res.writeHead(body ? 200 : 404, { "content-type": "application/json" });
-    res.end(JSON.stringify(body ?? { error: "not found" }));
+    const { statusCode, body } = adminResponse(req.url, status, () => ({
+      ...status,
+      controlPlane: {
+        lastConfigSuccessAt: configClient.lastSuccessAt?.toISOString() ?? null,
+        consecutiveFailures: configClient.consecutiveFailures,
+        telemetryQueued: telemetry.queued,
+        telemetryDropped: telemetry.dropped,
+      },
+    }));
+    res.writeHead(statusCode, { "content-type": "application/json" });
+    res.end(JSON.stringify(body));
   });
   admin.listen(env.SIDECAR_ADMIN_PORT, "127.0.0.1", () => logger.info({ port: env.SIDECAR_ADMIN_PORT }, "admin status endpoint (loopback only)"));
 

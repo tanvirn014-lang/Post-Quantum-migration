@@ -117,6 +117,10 @@ describe("access control", () => {
     assert.strictEqual(health.headers["x-content-type-options"], "nosniff");
     assert.ok(health.headers["x-request-id"]);
     assert.strictEqual((await t.app.inject({ method: "GET", url: "/readyz" })).statusCode, 200);
+    assert.strictEqual((await t.app.inject({ method: "GET", url: "/livez" })).json().status, "alive");
+    const metrics = await t.app.inject({ method: "GET", url: "/metrics" });
+    assert.strictEqual(metrics.statusCode, 200);
+    assert.match(metrics.body, /http_requests_total/);
   });
 
   it("returns a consistent error envelope for unknown routes and bad JSON", async () => {

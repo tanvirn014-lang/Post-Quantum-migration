@@ -18,6 +18,7 @@ import "./http/rbac.test.js";
 import "./http/audit.test.js";
 import "./http/partner.test.js";
 import "./http/reversal.test.js";
+import "./http/observability.test.js";
 import "./partner/replay-cache.test.js";
 import "./http/cors.test.js";
 import "./http/log-hygiene.test.js";
