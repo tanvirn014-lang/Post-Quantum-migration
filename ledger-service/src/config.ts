@@ -23,6 +23,13 @@ const envSchema = z
      *  verification during a signing-key rotation window. Remove a key once accessTokenTtl has
      *  elapsed since the rotation (no unexpired token can still carry it). */
     JWT_ADDITIONAL_PUBLIC_KEY_FILES: z.string().optional(),
+
+    /** base64url 32-byte master key for envelope-encrypting PII (customers.full_name) at rest.
+     *  Unset = stored in the clear (dev). Production should supply a real KMS/HSM via a KMS adapter;
+     *  enabling it on a DB with existing plaintext rows needs a one-off migration. */
+    KMS_MASTER_KEY: z.string().optional(),
+    /** Comma-separated base64url PREVIOUS master keys, retained for decryption during a KMS rotation. */
+    KMS_PREVIOUS_MASTER_KEYS: z.string().optional(),
     JWT_ISSUER: z.string().default("pq-bank-ledger-service"),
     JWT_AUDIENCE: z.string().default("pq-bank-platform"),
     ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(600),
@@ -82,6 +89,8 @@ export interface AppConfig {
   jwtPrivateKeyFile: string | undefined;
   jwtPrivateKey: string | undefined;
   jwtAdditionalPublicKeyFiles: string[];
+  kmsMasterKey: string | undefined;
+  kmsPreviousMasterKeys: string[];
   jwtIssuer: string;
   jwtAudience: string;
   accessTokenTtlSeconds: number;
@@ -118,6 +127,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     jwtPrivateKey: e.JWT_PRIVATE_KEY,
     jwtAdditionalPublicKeyFiles: e.JWT_ADDITIONAL_PUBLIC_KEY_FILES
       ? e.JWT_ADDITIONAL_PUBLIC_KEY_FILES.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
+      : [],
+    kmsMasterKey: e.KMS_MASTER_KEY,
+    kmsPreviousMasterKeys: e.KMS_PREVIOUS_MASTER_KEYS
+      ? e.KMS_PREVIOUS_MASTER_KEYS.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
       : [],
     jwtIssuer: e.JWT_ISSUER,
     jwtAudience: e.JWT_AUDIENCE,

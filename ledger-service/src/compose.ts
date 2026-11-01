@@ -8,6 +8,7 @@ import { createPool } from "./adapters/postgres/db.js";
 import { PostgresIdentityStore } from "./adapters/postgres/identity-store.js";
 import { PostgresLedgerStore } from "./adapters/postgres/ledger-store.js";
 import { JoseSupabaseVerifier } from "./adapters/supabase/verifier.js";
+import { DevKms } from "./crypto/kms.js";
 import { AuditService } from "./app/audit-service.js";
 import { IdentityService } from "./app/identity-service.js";
 import { LedgerService } from "./app/ledger-service.js";
@@ -43,11 +44,19 @@ export async function composeApplication(config: AppConfig): Promise<Application
   // Readiness probe: in-memory is always ready; Postgres pings the pool.
   let ping: () => Promise<void> = async () => {};
 
+  // Envelope-encrypt PII at rest when a KMS master key is configured (the Postgres store only).
+  const identityKms = config.kmsMasterKey
+    ? new DevKms(Buffer.from(config.kmsMasterKey, "base64url"), config.kmsPreviousMasterKeys.map((k) => Buffer.from(k, "base64url")))
+    : undefined;
+
   if (config.ledgerStore === "postgres") {
+    if (!identityKms) {
+      console.warn("KMS_MASTER_KEY is not set - customer PII (full_name) is stored in the clear. Set it to envelope-encrypt at rest.");
+    }
     const pool = createPool(config.databaseUrl, config.pgPoolMax);
     stores = {
       ledger: new PostgresLedgerStore(pool),
-      identity: new PostgresIdentityStore(pool),
+      identity: new PostgresIdentityStore(pool, identityKms),
       audit: new PostgresAuditStore(pool),
     };
     closePool = () => pool.end();

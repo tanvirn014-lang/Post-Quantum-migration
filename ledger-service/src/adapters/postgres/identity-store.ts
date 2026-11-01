@@ -4,6 +4,7 @@ import { EmailAlreadyRegisteredError } from "../../identity/errors.js";
 import type { Role } from "../../identity/roles.js";
 import type { Customer, NewCustomer, NewUser, RefreshTokenRecord, User, UserStatus } from "../../identity/types.js";
 import type { ExternalCustomerInput, IdentityStore, UserPatch } from "../../ports/identity-store.js";
+import type { KeyManagementService } from "../../crypto/kms.js";
 
 interface UserRow {
   id: string;
@@ -85,7 +86,22 @@ const PATCH_COLUMNS: Record<keyof UserPatch, string> = {
 };
 
 export class PostgresIdentityStore implements IdentityStore {
-  constructor(private readonly pool: pg.Pool) {}
+  constructor(
+    private readonly pool: pg.Pool,
+    /** When set, customers.full_name (PII) is envelope-encrypted at rest and decrypted on read.
+     *  Unset (dev) stores it in the clear. Enabling it on a database with existing plaintext rows
+     *  needs a one-off migration (decrypt throws on legacy plaintext) - documented in the plan. */
+    private readonly kms?: KeyManagementService,
+  ) {}
+
+  private encName(name: string): Promise<string> {
+    return this.kms ? this.kms.encrypt(name) : Promise.resolve(name);
+  }
+
+  private async toCustomer(row: CustomerRow): Promise<Customer> {
+    const fullName = this.kms ? await this.kms.decrypt(row.full_name) : row.full_name;
+    return { ...mapCustomer(row), fullName };
+  }
 
   async createCustomerWithUser(
     customerInput: NewCustomer,
@@ -97,7 +113,7 @@ export class PostgresIdentityStore implements IdentityStore {
       const customerId = randomUUID();
       const { rows: customerRows } = await client.query<CustomerRow>(
         "INSERT INTO customers (id, full_name, email) VALUES ($1, $2, $3) RETURNING *",
-        [customerId, customerInput.fullName, customerInput.email],
+        [customerId, await this.encName(customerInput.fullName), customerInput.email],
       );
       const { rows: userRows } = await client.query<UserRow>(
         `INSERT INTO users (id, email, password_hash, role, customer_id, must_change_password)
@@ -105,7 +121,7 @@ export class PostgresIdentityStore implements IdentityStore {
         [randomUUID(), userInput.email, userInput.passwordHash, customerId, userInput.mustChangePassword],
       );
       await client.query("COMMIT");
-      return { customer: mapCustomer(customerRows[0]!), user: mapUser(userRows[0]!) };
+      return { customer: await this.toCustomer(customerRows[0]!), user: mapUser(userRows[0]!) };
     } catch (err) {
       await client.query("ROLLBACK").catch(() => {});
       if (isUniqueViolation(err)) throw new EmailAlreadyRegisteredError();
@@ -119,9 +135,9 @@ export class PostgresIdentityStore implements IdentityStore {
     try {
       const { rows } = await this.pool.query<CustomerRow>(
         "INSERT INTO customers (id, full_name, email) VALUES ($1, $2, $3) RETURNING *",
-        [randomUUID(), input.fullName, input.email],
+        [randomUUID(), await this.encName(input.fullName), input.email],
       );
-      return mapCustomer(rows[0]!);
+      return this.toCustomer(rows[0]!);
     } catch (err) {
       if (isUniqueViolation(err)) throw new EmailAlreadyRegisteredError();
       throw err;
@@ -144,17 +160,17 @@ export class PostgresIdentityStore implements IdentityStore {
 
   async getCustomer(id: string): Promise<Customer | null> {
     const { rows } = await this.pool.query<CustomerRow>("SELECT * FROM customers WHERE id = $1", [id]);
-    return rows[0] ? mapCustomer(rows[0]) : null;
+    return rows[0] ? this.toCustomer(rows[0]) : null;
   }
 
   async findCustomerByEmail(email: string): Promise<Customer | null> {
     const { rows } = await this.pool.query<CustomerRow>("SELECT * FROM customers WHERE email = $1", [email]);
-    return rows[0] ? mapCustomer(rows[0]) : null;
+    return rows[0] ? this.toCustomer(rows[0]) : null;
   }
 
   async listCustomers(): Promise<Customer[]> {
     const { rows } = await this.pool.query<CustomerRow>("SELECT * FROM customers ORDER BY created_at, id");
-    return rows.map(mapCustomer);
+    return Promise.all(rows.map((r) => this.toCustomer(r)));
   }
 
   async findUserByEmail(email: string): Promise<User | null> {
@@ -192,7 +208,7 @@ export class PostgresIdentityStore implements IdentityStore {
       const customerId = randomUUID();
       const { rows: customerRows } = await client.query<CustomerRow>(
         "INSERT INTO customers (id, full_name, email) VALUES ($1, $2, $3) RETURNING *",
-        [customerId, input.fullName, input.email],
+        [customerId, await this.encName(input.fullName), input.email],
       );
       const { rows: userRows } = await client.query<UserRow>(
         `INSERT INTO users (id, email, password_hash, role, customer_id, must_change_password, supabase_user_id)
@@ -200,7 +216,7 @@ export class PostgresIdentityStore implements IdentityStore {
         [randomUUID(), input.email, input.passwordHash, customerId, input.supabaseUserId],
       );
       await client.query("COMMIT");
-      return { customer: mapCustomer(customerRows[0]!), user: mapUser(userRows[0]!) };
+      return { customer: await this.toCustomer(customerRows[0]!), user: mapUser(userRows[0]!) };
     } catch (err) {
       await client.query("ROLLBACK").catch(() => {});
       if (isUniqueViolation(err)) throw new EmailAlreadyRegisteredError();

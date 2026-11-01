@@ -9,6 +9,7 @@ import "./app/identity-supabase.test.js";
 import "./app/ledger-audit-atomicity.test.js";
 import "./app/reconcile.test.js";
 import "./identity/crypto.test.js";
+import "./crypto/kms.test.js";
 import "./identity/key-rotation.test.js";
 import "./identity/supabase-verifier.test.js";
 import "./audit/chain.test.js";
@@ -26,3 +27,4 @@ import "./http/log-hygiene.test.js";
 // Skip themselves unless a Postgres server is reachable - see the files for how to run them.
 import "./adapters/postgres-ledger-store.integration.test.js";
 import "./adapters/postgres-identity-audit.integration.test.js";
+import "./adapters/postgres-identity-kms.integration.test.js";
