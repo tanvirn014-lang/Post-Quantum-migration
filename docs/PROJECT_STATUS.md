@@ -255,3 +255,29 @@ Known gaps carried forward:
 - The sidecar-to-core hop is plain HTTP with an HMAC-signed assertion; certificates and JWTs are classical.
 - Backend follow-ups noted by the frontend work: include the ground-truth scope and preparer in the comparison response;
   publish the permission set instead of mirroring it in the UI.
+
+## 13. NFR remediation (post-audit, 2026-11-02)
+
+Driven by the audit in `docs/audits/`. Each milestone was built test-first on its own branch, verified
+(`npm run test:all` + per-service type-check + `scripts/claim-audit.mjs`), and merged to `main`. The staged plan
+for the remaining work (M4 KMS/at-rest, M7 HA/DR, M8 internal mTLS/PKI, M9 independent CBOM validation), with every
+task classified LOCAL / INFRA / HUMAN, is `docs/audits/11_STAGED_PLAN_M4_M9.md`.
+
+| Milestone | Change | Audit finding | Status | Evidence |
+|---|---|---|---|---|
+| M0 | Single integration line + CI gate (test:all, type-check, lint, claim-audit, dep scan, CycloneDX SBOM) | OPS-002/003/010 | VERIFIED (CI runs on push once a GitHub remote exists) | `.github/workflows/ci.yml` |
+| M1 | Replay-proof partner assertion: `v:2` + unique `jti` + single-use `AssertionReplayCache` | F1 / API-005 | VERIFIED | `pqc-sidecar/src/sidecar/assertion.ts`, `ledger-service/src/partner/replay-cache.ts`, `tests/.../replay-cache`, `http/partner.test.ts` |
+| M3 | Supabase token `aud` verified; auto-provisioning gated behind `SUPABASE_AUTO_PROVISION` (default off), refusal audited | F3 / IAM-002 / DATA-012 | VERIFIED | `ledger-service/src/adapters/supabase/verifier.ts`, `app/identity-service.ts`, `tests/identity/supabase-verifier`, `app/identity-supabase` |
+| M2 | Financial postings audited INSIDE the posting transaction (atomic, exactly-once); no at-least-once gap | F2 / FIN-010 / OBS-003 | VERIFIED | `ledger-service/src/adapters/postgres/{audit-append,ledger-store}.ts`, `tests/app/ledger-audit-atomicity`, postgres integration |
+| M5 | Transaction reversals (compensating entries, original marked reversed, operator-gated) + `reconcileBalances` drift sweep | FIN-006/008/012 | VERIFIED (reconcile scheduling pending) | `ledger-service/src/.../ledger-store.ts`, `http/routes/transactions.ts`, `tests/http/reversal`, `app/reconcile`, postgres integration |
+| M6 | `/livez` + `/readyz` + Prometheus `/metrics` across ledger, security, sidecar | REL-006 / OBS-005 | VERIFIED (tracing + alerting still open) | `ledger-service/src/http/server.ts`, `security-service/src/http/server.ts`, `pqc-sidecar/src/admin.ts`, `tests/.../observability`, `admin.test.ts` |
+| M4 (slice) | JWT signing-key rotation via a multi-key JWKS (active key + retained previous keys) | SEC-008 (part) | PARTIAL — rotation VERIFIED; KMS/HSM + at-rest encryption (SEC-007/009) still require external infra | `ledger-service/src/identity/tokens.ts`, `tests/identity/key-rotation.test.ts` |
+
+Test counts on `main` after these milestones (with PostgreSQL running): ledger 196, security 144, sidecar 117, web 210.
+`scripts/claim-audit.mjs` remains clean (0 un-negated restricted phrases). The flaky `pqc-sidecar` benchmark-throughput
+test can fail under full-suite CPU contention; it passes on an isolated run and is unrelated to these changes.
+
+Carried-forward limitations unchanged by this work: no real KMS/HSM or at-rest volume encryption (M4.e); no production
+HA/DR, containers or IaC in operation (M7, local slices planned); sidecar→core hop still plain HTTP + HMAC until M8
+internal mTLS lands; the CBOM ground truth still awaits an independent human reviewer (M9.c). Hybrid PQ protection
+remains key-establishment-only at the external sidecar boundary; certificates and token signatures are classical.
