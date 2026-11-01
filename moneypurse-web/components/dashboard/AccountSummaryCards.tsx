@@ -8,10 +8,10 @@ import { EmptyState } from "../ui/QueryState";
 
 function AccountCard({ label, account }: { label: string; account: Account }) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg bg-surface-overlay p-4">
-      <span className="text-xs text-muted">{label}</span>
-      <span className="text-2xl font-semibold text-primary">{formatCurrency(account.balanceMinorUnits, account.currency)}</span>
-      {account.status !== "active" && <span className="text-xs text-red-300 capitalize">{account.status}</span>}
+    <div className="flex flex-col gap-1 rounded-md border border-subtle bg-surface-overlay p-4">
+      <span className="text-xs text-secondary">{label}</span>
+      <span className="figure text-2xl font-semibold tracking-tight text-primary">{formatCurrency(account.balanceMinorUnits, account.currency)}</span>
+      {account.status !== "active" && <span className="text-xs font-medium text-error capitalize">{account.status}</span>}
     </div>
   );
 }
@@ -51,8 +51,8 @@ export function AccountSummaryCards({
           </div>
           {total && (
             <div className="mt-4 flex items-center justify-between border-t border-subtle pt-3 text-sm">
-              <span className="text-muted">Total</span>
-              <span className="font-semibold text-primary">{formatCurrency(total.minorUnits, total.currency)}</span>
+              <span className="text-secondary">Total</span>
+              <span className="figure font-semibold text-primary">{formatCurrency(total.minorUnits, total.currency)}</span>
             </div>
           )}
         </>

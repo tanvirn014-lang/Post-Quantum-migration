@@ -14,7 +14,7 @@ import { StatusBadge } from "../ui/StatusBadge";
 
 function SimulationBanner({ disclaimer }: { disclaimer: string | null }) {
   return (
-    <div role="note" className="rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 text-sm">
+    <div role="note" className="rounded-md border border-subtle bg-accent-soft px-4 py-3 text-sm">
       <p>
         <Badge tone="warning">SIMULATION</Badge> <span className="font-medium text-primary">Educational simulator, not an attack.</span>
       </p>

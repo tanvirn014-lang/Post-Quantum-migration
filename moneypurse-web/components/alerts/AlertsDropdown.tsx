@@ -20,7 +20,7 @@ export function AlertsDropdown() {
         >
           🔔
           {count > 0 && (
-            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-accent text-[10px] text-surface-base flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-accent text-[10px] text-on-accent flex items-center justify-center">
               {count}
             </span>
           )}

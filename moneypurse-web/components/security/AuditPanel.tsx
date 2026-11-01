@@ -73,7 +73,7 @@ function SourceAudit({ source }: { source: AuditSource }) {
           </div>
         )}
         {result && (
-          <div role="status" className={`mt-3 rounded-lg px-3 py-2 text-sm ${result.valid ? "bg-emerald-500/10 text-emerald-300" : "bg-red-500/10 text-red-300"}`}>
+          <div role="status" className={`mt-3 rounded-md px-3 py-2 text-sm ${result.valid ? "bg-success-soft text-success" : "bg-error-soft text-error"}`}>
             {result.valid ? (
               <p>Chain valid: {result.eventsChecked} events verified.</p>
             ) : (

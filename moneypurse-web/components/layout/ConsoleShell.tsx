@@ -37,7 +37,7 @@ export function ConsoleShell({ title, nav, children, notice = false }: { title: 
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium ${active ? "bg-surface-overlay text-primary" : "text-muted hover:text-primary"}`}
+                className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium ${active ? "bg-accent-soft text-accent" : "text-secondary hover:bg-surface-overlay hover:text-primary"}`}
               >
                 {item.label}
               </Link>

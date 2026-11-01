@@ -9,7 +9,7 @@ export function Dropdown({ trigger, children }: { trigger: ReactNode; children: 
         <DropdownMenu.Content
           align="end"
           sideOffset={8}
-          className="min-w-64 rounded-lg bg-surface-overlay border border-subtle p-2 shadow-xl"
+          className="min-w-64 rounded-lg bg-surface-raised border border-subtle p-2 shadow-e4"
         >
           {children}
         </DropdownMenu.Content>

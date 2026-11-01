@@ -122,7 +122,7 @@ export function TransferWidget({
           </Field>
           <FormError error={transfer.error} />
           {done && (
-            <p role="status" className="text-sm text-emerald-400">
+            <p role="status" className="text-sm text-success">
               {done}
             </p>
           )}

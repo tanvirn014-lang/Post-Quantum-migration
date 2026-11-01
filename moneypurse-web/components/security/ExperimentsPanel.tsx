@@ -125,7 +125,7 @@ function ScenarioCard({ scenario, canRun }: { scenario: Scenario; canRun: boolea
       </form>
 
       {run.isError && (
-        <div role="alert" className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">
+        <div role="alert" className="mt-3 rounded-md bg-error-soft px-3 py-2 text-sm text-error">
           {runErrorMessage(run.error)}
         </div>
       )}

@@ -47,7 +47,7 @@ export function SmartSearch() {
         onOpenChange={setOpen}
         shouldFilter={false}
         label="Smart search"
-        className="fixed left-1/2 top-24 w-full max-w-lg -translate-x-1/2 rounded-xl bg-surface-raised border border-subtle shadow-2xl overflow-hidden"
+        className="fixed left-1/2 top-24 w-full max-w-lg -translate-x-1/2 rounded-xl bg-surface-raised border border-subtle shadow-e5 overflow-hidden"
       >
         <Command.Input
           value={query}

@@ -179,7 +179,7 @@ function CbomDetail({ cbom, canGenerate }: { cbom: CbomMeta; canGenerate: boolea
             <Badge tone={cbom.validation.valid ? "success" : "danger"}>{cbom.validation.valid ? "Valid" : "Invalid"}</Badge> <span className="text-muted">{cbom.validation.schema}</span>
           </p>
           {cbom.validation.errors.length > 0 && (
-            <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs text-red-300">
+            <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs text-error">
               {cbom.validation.errors.map((e, i) => (
                 <li key={i}>
                   <span className="font-mono">{e.path}</span>: {e.message}

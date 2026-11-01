@@ -14,7 +14,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
 
 export function Panel({ title, badge, actions, children }: { title: string; badge?: ReactNode; actions?: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-xl bg-surface-raised p-4">
+    <section className="rounded-lg border border-subtle bg-surface-raised p-4 shadow-e2">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{title}</h2>
@@ -29,10 +29,10 @@ export function Panel({ title, badge, actions, children }: { title: string; badg
 
 export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
-    <div className="rounded-lg bg-surface-overlay p-3">
-      <p className="text-xs text-muted">{label}</p>
-      <p className="mt-1 text-xl font-semibold text-primary">{value}</p>
-      {hint && <p className="mt-0.5 text-xs text-muted">{hint}</p>}
+    <div className="rounded-md border border-subtle bg-surface-overlay p-3">
+      <p className="text-xs text-secondary">{label}</p>
+      <p className="figure mt-1 text-xl font-semibold text-primary">{value}</p>
+      {hint && <p className="mt-0.5 text-xs text-secondary">{hint}</p>}
     </div>
   );
 }

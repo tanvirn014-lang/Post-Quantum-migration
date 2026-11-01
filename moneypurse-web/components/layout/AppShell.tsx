@@ -9,11 +9,13 @@ import { Header } from "./Header";
 export function AppShell({ children }: { children: ReactNode }) {
   const { user } = useSession();
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-surface-base">
       <Sidebar />
       <div className="flex-1 min-w-0 flex flex-col">
         <Header greeting="Welcome back" identity={user?.email ?? ""} />
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="flex-1 px-4 pb-10 sm:px-6 lg:px-8">
+          <div className="mx-auto w-full max-w-[1320px]">{children}</div>
+        </main>
       </div>
     </div>
   );

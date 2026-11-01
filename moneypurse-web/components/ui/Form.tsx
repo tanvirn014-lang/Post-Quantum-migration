@@ -1,6 +1,6 @@
 import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 
-const CONTROL = "w-full rounded-lg bg-surface-overlay border border-subtle px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-accent";
+const CONTROL = "w-full rounded-md bg-surface-raised border border-subtle px-3 py-2 text-sm text-primary placeholder:text-muted transition-colors focus:outline-none focus:border-accent hover:border-strong disabled:opacity-60 disabled:cursor-not-allowed";
 
 export function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string | undefined; children: (id: string) => ReactNode }) {
   const id = useId();
@@ -12,7 +12,7 @@ export function Field({ label, hint, error, children }: { label: string; hint?: 
       {children(id)}
       {hint && !error && <p className="text-xs text-muted">{hint}</p>}
       {error && (
-        <p role="alert" className="text-xs text-red-400">
+        <p role="alert" className="text-xs text-error">
           {error}
         </p>
       )}
@@ -43,7 +43,7 @@ export function FormError({ error }: { error: unknown }) {
   const message = error instanceof Error ? error.message : "Something went wrong.";
   const problems = (error as { details?: { problems?: string[] } } | null)?.details?.problems;
   return (
-    <div role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">
+    <div role="alert" className="rounded-md bg-error-soft px-3 py-2 text-sm text-error">
       <p>{message}</p>
       {problems && problems.length > 0 && (
         <ul className="mt-1 list-disc pl-5 text-xs">

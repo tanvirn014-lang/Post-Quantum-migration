@@ -9,13 +9,13 @@ export interface HeaderProps {
 
 export function Header({ greeting, identity }: HeaderProps) {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 border-b border-subtle">
+    <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 bg-surface-base/85 px-4 py-4 backdrop-blur-sm sm:px-6 lg:px-8">
       <div className="min-w-0">
-        <p className="text-lg font-semibold text-primary">{greeting}</p>
-        {identity && <p className="truncate text-xs text-muted">{identity}</p>}
+        <h1 className="text-xl font-semibold tracking-tight text-primary">{greeting}</h1>
+        {identity && <p className="truncate text-xs text-secondary">{identity}</p>}
       </div>
 
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-3">
         <SmartSearch />
         <AlertsDropdown />
         <UserMenu />

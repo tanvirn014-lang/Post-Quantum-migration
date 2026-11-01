@@ -57,7 +57,7 @@ function Detail({ run }: { run: BenchmarkDetail }) {
     <Panel title={`Run ${run.runId}`} badge={<IntegrityBadge run={run} />}>
       <div className="space-y-5">
         {view.banner && (
-          <div role="alert" className={`rounded-lg px-4 py-3 text-sm ${run.integrity.status === "invalid" ? "bg-red-500/10 text-red-300" : "bg-accent/10 text-accent"}`}>
+          <div role="alert" className={`rounded-md px-4 py-3 text-sm ${run.integrity.status === "invalid" ? "bg-error-soft text-error" : "bg-accent-soft text-accent"}`}>
             {view.banner}
           </div>
         )}

@@ -11,7 +11,7 @@ import { Field, TextInput } from "../ui/Form";
 function ErrorText({ error }: { error: string | null }) {
   if (!error) return null;
   return (
-    <p role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">
+    <p role="alert" className="rounded-md bg-error-soft px-3 py-2 text-sm text-error">
       {error}
     </p>
   );

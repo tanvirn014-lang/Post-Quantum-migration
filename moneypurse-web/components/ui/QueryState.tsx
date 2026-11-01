@@ -18,10 +18,10 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
   const message = error instanceof Error ? error.message : "Something went wrong.";
   const requestId = (error as { requestId?: string } | null)?.requestId;
   return (
-    <div role="alert" className="flex items-center justify-between gap-3 rounded-lg bg-red-500/10 px-4 py-3 text-sm">
+    <div role="alert" className="flex items-center justify-between gap-3 rounded-md bg-error-soft px-4 py-3 text-sm">
       <div>
-        <p className="text-red-300">{message}</p>
-        {requestId && <p className="mt-0.5 text-xs text-muted">Request id: {requestId}</p>}
+        <p className="text-error">{message}</p>
+        {requestId && <p className="mt-0.5 text-xs text-secondary">Request id: {requestId}</p>}
       </div>
       {onRetry && (
         <Button variant="secondary" onClick={onRetry}>

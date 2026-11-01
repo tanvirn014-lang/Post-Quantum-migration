@@ -15,8 +15,8 @@ export function Drawer({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/60" />
-        <Dialog.Content className="fixed right-0 top-0 h-full w-full max-w-md bg-surface-raised p-6 overflow-y-auto shadow-xl">
+        <Dialog.Overlay className="fixed inset-0 bg-navy/40 backdrop-blur-[2px]" />
+        <Dialog.Content className="fixed right-0 top-0 h-full w-full max-w-md bg-surface-raised p-6 overflow-y-auto shadow-e5 border-l border-subtle">
           <div className="flex items-center justify-between mb-4">
             <Dialog.Title className="text-lg font-semibold text-primary">{title}</Dialog.Title>
             <Dialog.Close className="text-muted hover:text-primary" aria-label="Close">

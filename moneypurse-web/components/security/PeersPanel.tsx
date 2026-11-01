@@ -151,7 +151,7 @@ function PeerRow({ peer, canManage }: { peer: Peer; canManage: boolean }) {
             </ConfirmDialog>
           </>
         )}
-        {update.error && <p className="text-xs text-red-400">{update.error.message}</p>}
+        {update.error && <p className="text-xs text-error">{update.error.message}</p>}
       </td>
     </tr>
   );

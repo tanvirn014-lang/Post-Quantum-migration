@@ -25,8 +25,8 @@ export function ConfirmDialog({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/60" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-surface-raised p-6 shadow-xl border border-subtle">
+        <Dialog.Overlay className="fixed inset-0 bg-navy/40 backdrop-blur-[2px]" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-surface-raised p-6 shadow-e5 border border-subtle">
           <Dialog.Title className="text-lg font-semibold text-primary">{title}</Dialog.Title>
           <Dialog.Description asChild>
             <div className="mt-2 text-sm text-muted">{children}</div>
@@ -35,7 +35,7 @@ export function ConfirmDialog({
             <Dialog.Close asChild>
               <Button variant="secondary">Cancel</Button>
             </Dialog.Close>
-            <Button variant="primary" className={danger ? "!bg-red-500 !text-white" : ""} disabled={busy} onClick={onConfirm}>
+            <Button variant={danger ? "danger" : "primary"} disabled={busy} onClick={onConfirm}>
               {busy ? "Working..." : confirmLabel}
             </Button>
           </div>

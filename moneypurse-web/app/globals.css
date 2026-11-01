@@ -1,28 +1,111 @@
 @import "tailwindcss";
 
+/*
+  Spatial Fintech design tokens.
+  A light, layered financial interface: a calm canvas, largely opaque white surfaces raised with
+  soft directional shadows, deep navy for anchored chrome, and a reserved accent blue for primary
+  actions, selection and focus only. Semantic names are kept stable so every component that already
+  uses them (bg-surface-raised, text-primary, text-muted, border-subtle, *-accent) reskins at once.
+*/
 :root {
-  /* Three distinguishable dark layers, darkest to lightest, plus text/border/accent. */
-  --surface-base: #0b0d11;
-  --surface-raised: #14171d;
-  --surface-overlay: #1e222a;
-  --text-primary: #f3f4f6;
-  --text-muted: #9499a6;
-  --border-subtle: #2a2f38;
-  --accent: #f59e0b;
+  /* Surfaces: canvas -> elevated -> muted. Elevation comes from shadow, not from lightening. */
+  --surface-base: #f3f6fa;      /* main canvas */
+  --surface-raised: #ffffff;    /* elevated content surface */
+  --surface-overlay: #eaf0f6;   /* muted / inset surface, selected rows */
+
+  /* Deep navy chrome for anchored, high-trust elements (navigation rail, dark panels). */
+  --navy: #101c32;
+  --navy-2: #1b2d48;
+
+  /* Text */
+  --text-primary: #17243b;
+  --text-secondary: #65748b;
+  --text-muted: #65748b;        /* alias retained: components use text-muted widely */
+  --text-on-dark: #eef3fa;      /* text on navy chrome */
+  --text-on-accent: #ffffff;    /* text on accent-blue fills */
+
+  /* Lines */
+  --border-subtle: #dfe6ef;
+  --border-strong: #c7d2e0;
+
+  /* Accent — reserved for primary actions, selection, focus. Not a decorative colour. */
+  --accent: #4268e8;
+  --accent-hover: #3357d4;
+  --accent-soft: #e7edfd;       /* tinted background for selected/active states */
+
+  /* Financial status — always paired with text/icon, never colour alone. */
+  --success: #168568;
+  --success-soft: #e2f1ec;
+  --warning: #b7791f;
+  --warning-soft: #f7efdd;
+  --error: #c44848;
+  --error-soft: #f7e6e6;
+
+  /* Radii (intentional, not arbitrary). */
+  --radius-sm: 0.375rem;   /* 6px  controls */
+  --radius-md: 0.625rem;   /* 10px inputs, small cards */
+  --radius-lg: 0.875rem;   /* 14px cards */
+  --radius-xl: 1.125rem;   /* 18px panels, modals */
+  --radius-pill: 9999px;
+
+  /* Elevation — a small, consistent system (canvas .. critical overlay). Soft, directional,
+     low-opacity ambient + key shadow on cool-navy tint so surfaces read as floating, not boxed. */
+  --elevation-1: 0 1px 2px rgba(16, 28, 50, 0.04), 0 1px 1px rgba(16, 28, 50, 0.03);
+  --elevation-2: 0 1px 2px rgba(16, 28, 50, 0.05), 0 4px 12px rgba(16, 28, 50, 0.06);
+  --elevation-3: 0 2px 4px rgba(16, 28, 50, 0.06), 0 10px 24px rgba(16, 28, 50, 0.08);
+  --elevation-4: 0 8px 20px rgba(16, 28, 50, 0.12), 0 2px 6px rgba(16, 28, 50, 0.08);
+  --elevation-5: 0 24px 56px rgba(16, 28, 50, 0.22), 0 8px 20px rgba(16, 28, 50, 0.12);
+
+  /* Focus ring (accessible, visible on every interactive surface). */
+  --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px var(--accent);
+
+  /* Motion — restrained; reinforces spatial relationships only. */
+  --motion-micro: 140ms;
+  --motion-surface: 220ms;
+  --motion-panel: 280ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* Theme keys below are named so the Tailwind utilities they produce match the
-   plan's exact names: bg-surface-base, text-primary, text-muted, border-subtle,
-   bg-accent/text-accent/border-accent (Tailwind's color-utility suffix is
-   whatever follows "--color-", e.g. --color-primary -> text-primary/bg-primary). */
+/* Tailwind theme mapping. The utility suffix follows "--color-" (e.g. --color-primary ->
+   text-primary/bg-primary). Shadows map to shadow-e1 .. shadow-e5; radii to rounded-* names. */
 @theme inline {
   --color-surface-base: var(--surface-base);
   --color-surface-raised: var(--surface-raised);
   --color-surface-overlay: var(--surface-overlay);
+  --color-navy: var(--navy);
+  --color-navy-2: var(--navy-2);
+
   --color-primary: var(--text-primary);
+  --color-secondary: var(--text-secondary);
   --color-muted: var(--text-muted);
+  --color-on-dark: var(--text-on-dark);
+  --color-on-accent: var(--text-on-accent);
+
   --color-subtle: var(--border-subtle);
+  --color-strong: var(--border-strong);
+
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-error: var(--error);
+  --color-error-soft: var(--error-soft);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --shadow-e1: var(--elevation-1);
+  --shadow-e2: var(--elevation-2);
+  --shadow-e3: var(--elevation-3);
+  --shadow-e4: var(--elevation-4);
+  --shadow-e5: var(--elevation-5);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -30,4 +113,32 @@
 body {
   background: var(--surface-base);
   color: var(--text-primary);
+  /* Calm, even rendering for dense financial text. */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Financial figures line up and compare correctly: tabular, lined numerals. Apply with .figure. */
+.figure {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* One consistent, visible focus indicator for keyboard users across the app. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* Respect reduced-motion: no transitions/animations when the user asks for calm. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
