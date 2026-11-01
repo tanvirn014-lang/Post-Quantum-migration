@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...but track the example template (no real secrets; anon key is a public value)
+!.env.local.example
 
 # vercel
 .vercel
