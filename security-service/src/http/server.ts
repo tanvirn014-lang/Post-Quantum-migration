@@ -15,6 +15,8 @@ import { registerTelemetryRoutes } from "./routes/telemetry-routes.js";
 
 export interface BuildServerOptions {
   logger?: boolean;
+  /** Destination for the application log; tests use it to inspect what is (and is not) logged. */
+  logStream?: NodeJS.WritableStream;
 }
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._-]{8,64}$/;
@@ -33,6 +35,7 @@ export function buildServer(deps: ServerDeps, opts: BuildServerOptions = {}): Fa
       ? {
           level: process.env["LOG_LEVEL"] ?? "info",
           redact: ["req.headers.authorization", "req.headers.cookie"],
+          ...(opts.logStream ? { stream: opts.logStream } : {}),
           ...(config.nodeEnv === "development" ? { transport: { target: "pino-pretty" } } : {}),
         }
       : false,

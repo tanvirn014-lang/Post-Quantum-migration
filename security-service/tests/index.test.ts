@@ -11,3 +11,4 @@ import "./experiments.test.js";
 import "./cbom.test.js";
 import "./hndl.test.js";
 import "./research.test.js";
+import "./log-hygiene.test.js";
