@@ -68,6 +68,7 @@ export async function composeApplication(config: AppConfig): Promise<Application
     ? new JoseSupabaseVerifier({
         issuer: `${config.supabaseUrl}/auth/v1`,
         jwksUrl: `${config.supabaseUrl}/auth/v1/.well-known/jwks.json`,
+        audience: config.supabaseAudience,
       })
     : undefined;
   if (supabase) console.info(`Supabase add-on identity layer enabled (issuer ${config.supabaseUrl}/auth/v1).`);
@@ -82,6 +83,7 @@ export async function composeApplication(config: AppConfig): Promise<Application
       refreshTtlDays: config.refreshTokenTtlDays,
     },
     supabase,
+    supabaseAutoProvision: config.supabaseAutoProvision,
   });
 
   return {

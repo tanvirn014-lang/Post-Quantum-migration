@@ -42,6 +42,15 @@ const envSchema = z
       .url()
       .transform((u) => u.replace(/\/+$/, ""))
       .optional(),
+    /** Expected `aud` claim on Supabase access tokens. Supabase user tokens use "authenticated". */
+    SUPABASE_AUDIENCE: z.string().default("authenticated"),
+    /** Whether a verified Supabase identity with no matching local customer is auto-provisioned.
+     *  Off by default (secure): an unseen identity is refused unless an operator pre-created the
+     *  customer (then it is linked). The sign-up demo sets this true. */
+    SUPABASE_AUTO_PROVISION: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
   })
   .superRefine((env, ctx) => {
     if (env.LEDGER_STORE === "postgres" && !env.DATABASE_URL) {
@@ -79,6 +88,8 @@ export interface AppConfig {
   loginLockMinutes: number;
   sidecarAssertionSecret: string | undefined;
   supabaseUrl: string | undefined;
+  supabaseAudience: string;
+  supabaseAutoProvision: boolean;
 }
 
 /** Parses and validates the environment once, at startup. Throws a readable error listing
@@ -111,6 +122,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     loginLockMinutes: e.LOGIN_LOCK_MINUTES,
     sidecarAssertionSecret: e.SIDECAR_ASSERTION_SECRET,
     supabaseUrl: e.SUPABASE_URL,
+    supabaseAudience: e.SUPABASE_AUDIENCE,
+    supabaseAutoProvision: e.SUPABASE_AUTO_PROVISION,
   };
 }
 

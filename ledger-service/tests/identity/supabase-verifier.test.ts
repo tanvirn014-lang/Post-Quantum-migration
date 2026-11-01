@@ -8,7 +8,7 @@ const ISSUER = "https://project.supabase.co/auth/v1";
 
 /** Mints an ES256 token with its own ephemeral key and returns the token plus a local JWKS
  *  resolver, so the verifier can be exercised without any network call. */
-async function signedToken(claims: Record<string, unknown>, opts: { alg?: string; expSeconds?: number; issuer?: string } = {}) {
+async function signedToken(claims: Record<string, unknown>, opts: { alg?: string; expSeconds?: number; issuer?: string; aud?: string } = {}) {
   const alg = opts.alg ?? "ES256";
   const { privateKey, publicKey } = await generateKeyPair(alg);
   const jwk = (await exportJWK(publicKey)) as JWK;
@@ -18,7 +18,7 @@ async function signedToken(claims: Record<string, unknown>, opts: { alg?: string
   const token = await new SignJWT(claims)
     .setProtectedHeader({ alg, kid, typ: "JWT" })
     .setIssuer(opts.issuer ?? ISSUER)
-    .setAudience("authenticated")
+    .setAudience(opts.aud ?? "authenticated")
     .setIssuedAt(now)
     .setExpirationTime(now + (opts.expSeconds ?? 3600))
     .sign(privateKey);
@@ -81,5 +81,17 @@ describe("JoseSupabaseVerifier", () => {
     const { token, keyResolver } = await signedToken({ sub: "a" });
     const verifier = new JoseSupabaseVerifier({ issuer: ISSUER, jwksUrl: "x", keyResolver });
     await assert.rejects(() => verifier.verify(token), InvalidTokenError);
+  });
+
+  it("rejects a token whose audience is not the configured one", async () => {
+    const { token, keyResolver } = await signedToken({ sub: "a", email: "a@b.co" }, { aud: "some-other-app" });
+    const verifier = new JoseSupabaseVerifier({ issuer: ISSUER, jwksUrl: "x", keyResolver, audience: "authenticated" });
+    await assert.rejects(() => verifier.verify(token), InvalidTokenError);
+  });
+
+  it("accepts a token with the configured audience", async () => {
+    const { token, keyResolver } = await signedToken({ sub: "a", email: "a@b.co" });
+    const verifier = new JoseSupabaseVerifier({ issuer: ISSUER, jwksUrl: "x", keyResolver, audience: "authenticated" });
+    assert.equal((await verifier.verify(token)).supabaseUserId, "a");
   });
 });

@@ -39,6 +39,9 @@ export interface IdentityServiceDeps {
   /** Optional add-on identity layer. When set, access tokens that are not valid local tokens are
    *  verified against it and resolved to (or provisioned as) a local customer. */
   supabase?: SupabaseVerifier | undefined;
+  /** Whether a verified Supabase identity with no matching local customer may be auto-provisioned.
+   *  Defaults to false: an unseen identity is refused unless an existing customer links by email. */
+  supabaseAutoProvision?: boolean;
   clock?: () => Date;
 }
 
@@ -258,6 +261,21 @@ export class IdentityService {
         details: { provider: "supabase" },
       });
       return linked ?? byEmail;
+    }
+
+    // Explicit allow required: an unseen Supabase identity is provisioned only when enabled. This
+    // stops any token from the project (or any audience) silently becoming a bank customer.
+    if (!this.deps.supabaseAutoProvision) {
+      await this.deps.audit.record({
+        actorUserId: null,
+        actorRole: "customer",
+        action: "auth.external_provision_refused",
+        resourceType: "user",
+        resourceId: identity.supabaseUserId,
+        outcome: "denied",
+        details: { provider: "supabase", reason: "auto-provisioning disabled" },
+      });
+      throw new InvalidTokenError();
     }
 
     const fullName = identity.fullName?.trim() || email.split("@")[0] || email;

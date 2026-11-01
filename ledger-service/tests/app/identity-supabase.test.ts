@@ -22,7 +22,7 @@ class FakeSupabaseVerifier implements SupabaseVerifier {
   }
 }
 
-async function buildService(verifier?: SupabaseVerifier) {
+async function buildService(verifier?: SupabaseVerifier, opts: { autoProvision?: boolean } = {}) {
   const config = testConfig();
   const stores = { identity: new MemoryIdentityStore(), audit: new MemoryAuditStore() };
   const hasher = new PasswordHasher({ logN: 10 });
@@ -40,6 +40,7 @@ async function buildService(verifier?: SupabaseVerifier) {
     audit,
     limits: { maxFailedAttempts: 5, lockMinutes: 15, refreshTtlDays: 7 },
     supabase: verifier,
+    supabaseAutoProvision: opts.autoProvision ?? true,
   });
   return { identity, stores, hasher };
 }
@@ -117,6 +118,24 @@ describe("IdentityService Supabase authentication", () => {
   it("rejects an unverifiable Supabase token", async () => {
     const { identity } = await buildService(new FakeSupabaseVerifier(new Map()));
     await assert.rejects(() => identity.authenticate("garbage"), InvalidTokenError);
+  });
+
+  it("refuses to provision an unseen Supabase identity when auto-provisioning is disabled", async () => {
+    const { identity, stores } = await buildService(new FakeSupabaseVerifier(new Map([["tok-alice", ALICE]])), { autoProvision: false });
+    await assert.rejects(() => identity.authenticate("tok-alice"), InvalidTokenError);
+    assert.equal((await stores.identity.listUsers()).length, 0, "no customer is created");
+    const events = await stores.audit.list({ limit: 50 });
+    assert.ok(events.some((e) => e.action === "auth.external_provision_refused"), "the refusal is audited");
+  });
+
+  it("still links an existing customer by email even when auto-provisioning is disabled", async () => {
+    const { identity, stores, hasher } = await buildService(new FakeSupabaseVerifier(new Map([["tok-alice", ALICE]])), { autoProvision: false });
+    const { user: existing } = await stores.identity.createCustomerWithUser(
+      { fullName: "Alice Local", email: "alice@example.com" },
+      { email: "alice@example.com", passwordHash: await hasher.hash("whatever-passphrase"), mustChangePassword: false },
+    );
+    const user = await identity.authenticate("tok-alice");
+    assert.equal(user.id, existing.id, "the pre-existing customer is linked, not refused");
   });
 
   it("rejects any token when no Supabase verifier is configured (unchanged local-only behavior)", async () => {

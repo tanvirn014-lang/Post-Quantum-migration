@@ -104,6 +104,12 @@ Then put the values in the git-ignored env files (templates in the `.env*.exampl
 ```bash
 # ledger-service/.env
 SUPABASE_URL=https://<ref>.supabase.co
+SUPABASE_AUTO_PROVISION=true   # required for self-service sign-up: lets the core create a local
+                               # customer for a verified Supabase identity it has not seen before.
+                               # Off by default (secure): without it, an unseen identity is refused
+                               # unless an operator pre-created the customer (then it is linked).
+                               # The core also checks the token audience (SUPABASE_AUDIENCE,
+                               # default "authenticated").
 # moneypurse-web/.env.local
 NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-public-key>

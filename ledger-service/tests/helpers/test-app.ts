@@ -56,6 +56,7 @@ export async function createTestApp(
     audit,
     limits: { maxFailedAttempts: config.loginMaxFailedAttempts, lockMinutes: config.loginLockMinutes, refreshTtlDays: config.refreshTokenTtlDays },
     supabase: extras.supabase,
+    supabaseAutoProvision: config.supabaseAutoProvision,
     clock: () => new Date(clock.now),
   });
   const deps: ServerDeps = { ledger: new LedgerService(stores.ledger), identity, audit, tokens, config };

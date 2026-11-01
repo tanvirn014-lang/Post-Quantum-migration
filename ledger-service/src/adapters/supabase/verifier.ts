@@ -7,6 +7,9 @@ export interface JoseSupabaseVerifierOptions {
   issuer: string;
   /** JWKS endpoint, e.g. https://<ref>.supabase.co/auth/v1/.well-known/jwks.json */
   jwksUrl: string;
+  /** Expected `aud` claim. Supabase user access tokens carry "authenticated". When omitted no
+   *  audience check is performed; the composition root always supplies it in production. */
+  audience?: string;
   /** Key resolver override for tests (a local JWKS); defaults to a cached remote JWKS. */
   keyResolver?: JWTVerifyGetKey;
 }
@@ -37,6 +40,8 @@ export class JoseSupabaseVerifier implements SupabaseVerifier {
       const { payload } = await jwtVerify(token, this.keys, {
         issuer: this.options.issuer,
         algorithms: ["ES256"],
+        // Only check the audience when one is configured (the composition root always sets it).
+        ...(this.options.audience !== undefined ? { audience: this.options.audience } : {}),
       });
       const sub = payload.sub;
       const email = payload["email"];

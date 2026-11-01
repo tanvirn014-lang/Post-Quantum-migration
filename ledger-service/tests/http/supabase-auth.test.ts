@@ -21,7 +21,7 @@ const BOB: SupabaseIdentity = {
 
 describe("HTTP: Supabase bearer tokens", () => {
   it("authenticates GET /auth/me with a Supabase token and provisions a customer", async () => {
-    const app = await createTestApp({}, { supabase: new FakeSupabaseVerifier(new Map([["supa-bob", BOB]])) });
+    const app = await createTestApp({ supabaseAutoProvision: true }, { supabase: new FakeSupabaseVerifier(new Map([["supa-bob", BOB]])) });
 
     const res = await app.app.inject({ method: "GET", url: "/auth/me", headers: { authorization: "Bearer supa-bob" } });
 
@@ -32,6 +32,13 @@ describe("HTTP: Supabase bearer tokens", () => {
     assert.ok(body.user.customerId);
     assert.equal(body.user.mustChangePassword, false);
     assert.ok(Array.isArray(body.permissions) && body.permissions.includes("account:read:own"));
+    await app.app.close();
+  });
+
+  it("does not auto-provision an unseen Supabase identity when provisioning is disabled (the default)", async () => {
+    const app = await createTestApp({}, { supabase: new FakeSupabaseVerifier(new Map([["supa-bob", BOB]])) });
+    const res = await app.app.inject({ method: "GET", url: "/auth/me", headers: { authorization: "Bearer supa-bob" } });
+    assert.equal(res.statusCode, 401);
     await app.app.close();
   });
 
