@@ -31,6 +31,13 @@ describe("route guards", () => {
     assert.strictEqual(redirectFor("/login", anonymous), null);
   });
 
+  it("lets signed-out visitors reach /signup, and sends signed-in users away from it", () => {
+    assert.strictEqual(redirectFor("/signup", anonymous), null);
+    assert.strictEqual(redirectFor("/signup", signedIn("customer")), "/dashboard");
+    assert.strictEqual(redirectFor("/signup", signedIn("operator")), "/operations");
+    assert.strictEqual(areaOf("/signup"), "public");
+  });
+
   it("sends each signed-in role to its own landing page from /, /login", () => {
     assert.strictEqual(redirectFor("/", signedIn("customer")), "/dashboard");
     assert.strictEqual(redirectFor("/login", signedIn("operator")), "/operations");

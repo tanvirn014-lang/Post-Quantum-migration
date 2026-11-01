@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { LoginForm } from "../../components/auth/LoginForm";
 
 export const metadata: Metadata = { title: "Sign in - MoneyPurse" };
@@ -11,6 +12,13 @@ export default function LoginPage() {
         <p className="mt-1 mb-6 text-sm text-muted">Sign in to continue.</p>
         <LoginForm />
         <p className="mt-6 text-xs text-muted">
+          New here?{" "}
+          <Link href="/signup" className="text-primary underline">
+            Create an account
+          </Link>
+          .
+        </p>
+        <p className="mt-2 text-xs text-muted">
           Research prototype for a hybrid post-quantum migration architecture. It is not a real bank and holds no real money.
         </p>
       </div>

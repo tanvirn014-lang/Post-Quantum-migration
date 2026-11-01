@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthGate } from "../components/auth/AuthGate";
+import { session } from "../lib/api/clients";
 import { isApiRequestError } from "../lib/api/api-client";
+import { restoreExternalSession } from "../lib/auth/customer-auth";
+import { getSupabaseGateway } from "../lib/auth/supabase-gateway";
 import { useAuthActions, useSession } from "../hooks/useSession";
 
 /** Restores a session from the refresh cookie once at start, and wipes cached data whenever the
@@ -14,7 +17,11 @@ function SessionLifecycle({ client }: { client: QueryClient }) {
   const lastUserId = useRef<string | null>(null);
 
   useEffect(() => {
-    void restore();
+    // Prefer a surviving Supabase session; otherwise restore from the local refresh cookie.
+    void (async () => {
+      const restored = await restoreExternalSession(session, getSupabaseGateway());
+      if (!restored) await restore();
+    })();
   }, [restore]);
 
   useEffect(() => {

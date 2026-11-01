@@ -49,6 +49,9 @@ export class SessionManager implements AuthProvider {
   private readonly listeners = new Set<() => void>();
   private refreshing: Promise<string | null> | null = null;
   private restoring: Promise<void> | null = null;
+  /** Set while an external identity (e.g. Supabase) owns the session: its tokens are refreshed
+   *  through this strategy instead of POST /auth/refresh. Null for local sessions. */
+  private externalRefresh: (() => Promise<string | null>) | null = null;
 
   constructor(private readonly options: SessionManagerOptions) {}
 
@@ -96,7 +99,26 @@ export class SessionManager implements AuthProvider {
 
   private clear(): void {
     this.accessToken = null;
+    this.externalRefresh = null;
     this.set(ANONYMOUS);
+  }
+
+  /**
+   * Adopts a session established by an external identity provider (the Supabase add-on layer):
+   * the access token is used for ledger-service calls (which verify it against Supabase and
+   * provision a local customer), and expiries are refreshed through the provided strategy rather
+   * than the local refresh cookie. Both the OTP sign-up and the customer login funnel through here.
+   */
+  async adoptExternalSession(accessToken: string, refreshStrategy: () => Promise<string | null>): Promise<SessionUser> {
+    this.externalRefresh = refreshStrategy;
+    try {
+      await this.establish(accessToken);
+    } catch (err) {
+      // Leave no partial external state behind, so a caller can fall back to the local path cleanly.
+      this.clear();
+      throw err;
+    }
+    return this.state.user!;
   }
 
   /** Called once at app start: turns a surviving refresh cookie back into a session, silently. */
@@ -148,6 +170,16 @@ export class SessionManager implements AuthProvider {
     if (!this.refreshing) {
       this.refreshing = (async () => {
         try {
+          if (this.externalRefresh) {
+            // An external identity (Supabase) owns this session; refresh through its strategy.
+            const token = await this.externalRefresh();
+            if (token) {
+              this.accessToken = token;
+              return token;
+            }
+            this.clear();
+            return null;
+          }
           const body = await this.authFetch<SessionBody>("POST", "/auth/refresh");
           this.accessToken = body.accessToken;
           return body.accessToken;

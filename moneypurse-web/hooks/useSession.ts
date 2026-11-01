@@ -1,7 +1,9 @@
 import { useSyncExternalStore } from "react";
 import { session } from "../lib/api/clients";
+import { loginWithFallback, logoutEverywhere } from "../lib/auth/customer-auth";
 import { hasSecurityPermission, type SecurityPermission } from "../lib/auth/security-permissions";
 import type { SessionState } from "../lib/auth/session";
+import { getSupabaseGateway } from "../lib/auth/supabase-gateway";
 
 export type { Role, SessionState, SessionUser } from "../lib/auth/session";
 
@@ -14,8 +16,10 @@ export function useSession(): SessionState {
 export function useAuthActions() {
   return {
     restore: () => session.restore(),
-    login: (email: string, password: string) => session.login(email, password),
-    logout: () => session.logout(),
+    // Local login first (staff/seeded accounts resolve here); customers who exist only in the
+    // Supabase add-on layer are picked up by the fallback.
+    login: (email: string, password: string) => loginWithFallback(session, getSupabaseGateway(), email, password),
+    logout: () => logoutEverywhere(session, getSupabaseGateway()),
     changePassword: (current: string, next: string) => session.changePassword(current, next),
   };
 }

@@ -245,4 +245,63 @@ describe("SessionManager", () => {
       }
     });
   });
+
+  describe("adoptExternalSession (external identity, e.g. Supabase)", () => {
+    it("establishes the session from an external access token via /auth/me", async () => {
+      stub = installFetch({ "GET /auth/me": () => json({ user: USER, permissions: PERMISSIONS }) });
+      const m = manager();
+      await m.adoptExternalSession("supa-token", async () => "supa-token-2");
+      assert.strictEqual(m.getState().status, "authenticated");
+      assert.strictEqual(m.getAccessToken(), "supa-token");
+      assert.strictEqual(stub.callsTo("GET", "/auth/me")[0]?.headers["authorization"], "Bearer supa-token");
+    });
+
+    it("refreshes via the injected strategy, never POST /auth/refresh", async () => {
+      stub = installFetch({ "GET /auth/me": () => json({ user: USER, permissions: PERMISSIONS }) });
+      const m = manager();
+      let calls = 0;
+      await m.adoptExternalSession("supa-1", async () => {
+        calls++;
+        return "supa-2";
+      });
+      assert.strictEqual(await m.refreshAccessToken(), "supa-2");
+      assert.strictEqual(m.getAccessToken(), "supa-2");
+      assert.strictEqual(calls, 1);
+      assert.strictEqual(stub.callsTo("POST", "/auth/refresh").length, 0);
+    });
+
+    it("ends the session when the external refresh yields null", async () => {
+      stub = installFetch({ "GET /auth/me": () => json({ user: USER, permissions: PERMISSIONS }) });
+      const m = manager();
+      await m.adoptExternalSession("supa-1", async () => null);
+      assert.strictEqual(await m.refreshAccessToken(), null);
+      assert.strictEqual(m.getState().status, "anonymous");
+      assert.strictEqual(m.getAccessToken(), null);
+    });
+
+    it("leaves no external state (and reverts to local refresh) when /auth/me fails during adopt", async () => {
+      stub = installFetch({
+        "GET /auth/me": () => apiError(500, "INTERNAL_ERROR", "boom"),
+        "POST /auth/refresh": () => json(sessionBody("local-tok")),
+      });
+      const m = manager();
+      let externalCalled = 0;
+      await assert.rejects(() => m.adoptExternalSession("supa-1", async () => { externalCalled++; return "supa-2"; }));
+      assert.strictEqual(m.getState().status, "anonymous");
+      assert.strictEqual(await m.refreshAccessToken(), "local-tok"); // local path, external strategy untouched
+      assert.strictEqual(externalCalled, 0);
+    });
+
+    it("reverts to the local refresh path after logout", async () => {
+      stub = installFetch({
+        "GET /auth/me": () => json({ user: USER, permissions: PERMISSIONS }),
+        "POST /auth/logout": () => noContent(),
+        "POST /auth/refresh": () => json(sessionBody("local-tok")),
+      });
+      const m = manager();
+      await m.adoptExternalSession("supa-1", async () => "supa-2");
+      await m.logout();
+      assert.strictEqual(await m.refreshAccessToken(), "local-tok"); // local path, not the external strategy
+    });
+  });
 });

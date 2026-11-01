@@ -3,11 +3,12 @@ import type { Role, SessionState } from "./session";
 export type Area = "public" | "account" | "customer" | "operator" | "security";
 
 export const LOGIN_PATH = "/login";
+export const SIGNUP_PATH = "/signup";
 export const CHANGE_PASSWORD_PATH = "/change-password";
 
 /** Which part of the app a path belongs to. Unknown paths default to the authenticated "account" area. */
 export function areaOf(pathname: string): Area {
-  if (pathname === LOGIN_PATH) return "public";
+  if (pathname === LOGIN_PATH || pathname === SIGNUP_PATH) return "public";
   if (pathname === CHANGE_PASSWORD_PATH) return "account";
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return "customer";
   if (pathname === "/operations" || pathname.startsWith("/operations/")) return "operator";
@@ -41,7 +42,7 @@ const AREA_PERMISSION: Record<Exclude<Area, "public" | "account">, string> = {
 export function redirectFor(pathname: string, session: SessionState): string | null {
   if (session.status === "loading") return null;
 
-  if (session.status === "anonymous") return pathname === LOGIN_PATH ? null : LOGIN_PATH;
+  if (session.status === "anonymous") return pathname === LOGIN_PATH || pathname === SIGNUP_PATH ? null : LOGIN_PATH;
 
   const user = session.user!;
   // A pending password change blocks everything else - it is the only thing the user may do.
@@ -51,7 +52,7 @@ export function redirectFor(pathname: string, session: SessionState): string | n
   const area = areaOf(pathname);
   // Signed-in users have no reason to see /login or the root; /change-password is only for the
   // forced change handled above (a voluntary change is not offered yet).
-  if (pathname === "/" || pathname === LOGIN_PATH || pathname === CHANGE_PASSWORD_PATH) return landing;
+  if (pathname === "/" || pathname === LOGIN_PATH || pathname === SIGNUP_PATH || pathname === CHANGE_PASSWORD_PATH) return landing;
   if (area !== "public" && area !== "account" && !session.permissions.includes(AREA_PERMISSION[area])) return landing;
   return null;
 }
