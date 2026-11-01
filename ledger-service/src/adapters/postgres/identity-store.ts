@@ -3,7 +3,7 @@ import type pg from "pg";
 import { EmailAlreadyRegisteredError } from "../../identity/errors.js";
 import type { Role } from "../../identity/roles.js";
 import type { Customer, NewCustomer, NewUser, RefreshTokenRecord, User, UserStatus } from "../../identity/types.js";
-import type { IdentityStore, UserPatch } from "../../ports/identity-store.js";
+import type { ExternalCustomerInput, IdentityStore, UserPatch } from "../../ports/identity-store.js";
 
 interface UserRow {
   id: string;
@@ -17,6 +17,7 @@ interface UserRow {
   must_change_password: boolean;
   created_at: Date;
   last_login_at: Date | null;
+  supabase_user_id: string | null;
 }
 
 interface CustomerRow {
@@ -49,6 +50,7 @@ const mapUser = (r: UserRow): User => ({
   mustChangePassword: r.must_change_password,
   createdAt: r.created_at,
   lastLoginAt: r.last_login_at,
+  supabaseUserId: r.supabase_user_id,
 });
 
 const mapCustomer = (r: CustomerRow): Customer => ({
@@ -163,6 +165,49 @@ export class PostgresIdentityStore implements IdentityStore {
   async findUserById(id: string): Promise<User | null> {
     const { rows } = await this.pool.query<UserRow>("SELECT * FROM users WHERE id = $1", [id]);
     return rows[0] ? mapUser(rows[0]) : null;
+  }
+
+  async findUserBySupabaseId(supabaseUserId: string): Promise<User | null> {
+    const { rows } = await this.pool.query<UserRow>("SELECT * FROM users WHERE supabase_user_id = $1", [supabaseUserId]);
+    return rows[0] ? mapUser(rows[0]) : null;
+  }
+
+  async linkSupabaseUser(userId: string, supabaseUserId: string): Promise<User | null> {
+    try {
+      const { rows } = await this.pool.query<UserRow>(
+        "UPDATE users SET supabase_user_id = $2 WHERE id = $1 RETURNING *",
+        [userId, supabaseUserId],
+      );
+      return rows[0] ? mapUser(rows[0]) : null;
+    } catch (err) {
+      if (isUniqueViolation(err)) throw new EmailAlreadyRegisteredError();
+      throw err;
+    }
+  }
+
+  async provisionExternalCustomer(input: ExternalCustomerInput): Promise<{ customer: Customer; user: User }> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const customerId = randomUUID();
+      const { rows: customerRows } = await client.query<CustomerRow>(
+        "INSERT INTO customers (id, full_name, email) VALUES ($1, $2, $3) RETURNING *",
+        [customerId, input.fullName, input.email],
+      );
+      const { rows: userRows } = await client.query<UserRow>(
+        `INSERT INTO users (id, email, password_hash, role, customer_id, must_change_password, supabase_user_id)
+         VALUES ($1, $2, $3, 'customer', $4, false, $5) RETURNING *`,
+        [randomUUID(), input.email, input.passwordHash, customerId, input.supabaseUserId],
+      );
+      await client.query("COMMIT");
+      return { customer: mapCustomer(customerRows[0]!), user: mapUser(userRows[0]!) };
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => {});
+      if (isUniqueViolation(err)) throw new EmailAlreadyRegisteredError();
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   async listUsers(): Promise<User[]> {

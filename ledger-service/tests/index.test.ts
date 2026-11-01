@@ -5,10 +5,13 @@
 import "./domain/money.test.js";
 import "./domain/ledger.test.js";
 import "./app/ledger-service.test.js";
+import "./app/identity-supabase.test.js";
 import "./identity/crypto.test.js";
+import "./identity/supabase-verifier.test.js";
 import "./audit/chain.test.js";
 import "./http/api.test.js";
 import "./http/auth.test.js";
+import "./http/supabase-auth.test.js";
 import "./http/rbac.test.js";
 import "./http/audit.test.js";
 import "./http/partner.test.js";

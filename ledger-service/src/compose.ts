@@ -7,6 +7,7 @@ import { PostgresAuditStore } from "./adapters/postgres/audit-store.js";
 import { createPool } from "./adapters/postgres/db.js";
 import { PostgresIdentityStore } from "./adapters/postgres/identity-store.js";
 import { PostgresLedgerStore } from "./adapters/postgres/ledger-store.js";
+import { JoseSupabaseVerifier } from "./adapters/supabase/verifier.js";
 import { AuditService } from "./app/audit-service.js";
 import { IdentityService } from "./app/identity-service.js";
 import { LedgerService } from "./app/ledger-service.js";
@@ -63,6 +64,13 @@ export async function composeApplication(config: AppConfig): Promise<Application
     accessTtlSeconds: config.accessTokenTtlSeconds,
   });
   const audit = new AuditService(stores.audit);
+  const supabase = config.supabaseUrl
+    ? new JoseSupabaseVerifier({
+        issuer: `${config.supabaseUrl}/auth/v1`,
+        jwksUrl: `${config.supabaseUrl}/auth/v1/.well-known/jwks.json`,
+      })
+    : undefined;
+  if (supabase) console.info(`Supabase add-on identity layer enabled (issuer ${config.supabaseUrl}/auth/v1).`);
   const identity = new IdentityService({
     store: stores.identity,
     tokens,
@@ -73,6 +81,7 @@ export async function composeApplication(config: AppConfig): Promise<Application
       lockMinutes: config.loginLockMinutes,
       refreshTtlDays: config.refreshTokenTtlDays,
     },
+    supabase,
   });
 
   return {

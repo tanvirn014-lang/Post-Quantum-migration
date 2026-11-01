@@ -33,6 +33,15 @@ const envSchema = z
     /** Shared with pqc-sidecar; the core only accepts partner traffic carrying a valid HMAC
      *  assertion made with this secret. Unset disables the partner API entirely. */
     SIDECAR_ASSERTION_SECRET: z.string().min(32).optional(),
+
+    /** Base URL of the hosted Supabase project (e.g. https://<ref>.supabase.co). When set, the
+     *  core also accepts Supabase-issued access tokens (verified against the project's public
+     *  JWKS) and provisions a local customer for them. Unset disables the add-on entirely. */
+    SUPABASE_URL: z
+      .string()
+      .url()
+      .transform((u) => u.replace(/\/+$/, ""))
+      .optional(),
   })
   .superRefine((env, ctx) => {
     if (env.LEDGER_STORE === "postgres" && !env.DATABASE_URL) {
@@ -69,6 +78,7 @@ export interface AppConfig {
   loginMaxFailedAttempts: number;
   loginLockMinutes: number;
   sidecarAssertionSecret: string | undefined;
+  supabaseUrl: string | undefined;
 }
 
 /** Parses and validates the environment once, at startup. Throws a readable error listing
@@ -100,6 +110,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     loginMaxFailedAttempts: e.LOGIN_MAX_FAILED_ATTEMPTS,
     loginLockMinutes: e.LOGIN_LOCK_MINUTES,
     sidecarAssertionSecret: e.SIDECAR_ASSERTION_SECRET,
+    supabaseUrl: e.SUPABASE_URL,
   };
 }
 

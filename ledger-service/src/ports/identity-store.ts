@@ -4,6 +4,14 @@ export type UserPatch = Partial<
   Pick<User, "passwordHash" | "status" | "mustChangePassword" | "failedLoginCount" | "lockedUntil" | "lastLoginAt">
 >;
 
+export interface ExternalCustomerInput {
+  supabaseUserId: string;
+  email: string;
+  fullName: string;
+  /** A random, unusable local hash so the local password path can never authenticate this user. */
+  passwordHash: string;
+}
+
 export interface IdentityStore {
   /** Atomically creates a customer record and the portal user bound to it. */
   createCustomerWithUser(customer: NewCustomer, user: Omit<NewUser, "customerId" | "role">): Promise<{ customer: Customer; user: User }>;
@@ -16,6 +24,11 @@ export interface IdentityStore {
 
   findUserByEmail(email: string): Promise<User | null>;
   findUserById(id: string): Promise<User | null>;
+  findUserBySupabaseId(supabaseUserId: string): Promise<User | null>;
+  /** Binds an existing local user to a Supabase identity (first external login for that email). */
+  linkSupabaseUser(userId: string, supabaseUserId: string): Promise<User | null>;
+  /** Atomically creates a customer and a customer-role user bound to a Supabase identity. */
+  provisionExternalCustomer(input: ExternalCustomerInput): Promise<{ customer: Customer; user: User }>;
   listUsers(): Promise<User[]>;
   updateUser(id: string, patch: UserPatch): Promise<User | null>;
   /** Atomically increments the failure counter; locks the account (and resets the counter)

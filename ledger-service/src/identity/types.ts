@@ -14,6 +14,8 @@ export interface User {
   mustChangePassword: boolean;
   createdAt: Date;
   lastLoginAt: Date | null;
+  /** Set when the account authenticates through the Supabase identity layer; null for local accounts. */
+  supabaseUserId: string | null;
 }
 
 export interface Customer {

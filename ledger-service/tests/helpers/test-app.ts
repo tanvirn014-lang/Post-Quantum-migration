@@ -13,6 +13,7 @@ import { PasswordHasher } from "../../src/identity/password.js";
 import type { Role } from "../../src/identity/roles.js";
 import { TokenService } from "../../src/identity/tokens.js";
 import type { Customer, User } from "../../src/identity/types.js";
+import type { SupabaseVerifier } from "../../src/ports/supabase-verifier.js";
 
 export const TEST_PASSWORD = "correct-horse-battery-staple";
 
@@ -33,7 +34,10 @@ export interface TestApp {
  * Builds the full application on in-memory adapters with a cheap password-hash cost, plus
  * helpers to mint users of each role and obtain real tokens through the real login flow.
  */
-export async function createTestApp(overrides: Partial<AppConfig> = {}): Promise<TestApp> {
+export async function createTestApp(
+  overrides: Partial<AppConfig> = {},
+  extras: { supabase?: SupabaseVerifier } = {},
+): Promise<TestApp> {
   const config = testConfig({ rateLimitMax: 100_000, loginRateLimitMax: 100_000, ...overrides });
   const stores = { ledger: new MemoryLedgerStore(), identity: new MemoryIdentityStore(), audit: new MemoryAuditStore() };
   const clock = { now: new Date("2026-11-01T10:00:00Z") };
@@ -51,6 +55,7 @@ export async function createTestApp(overrides: Partial<AppConfig> = {}): Promise
     hasher,
     audit,
     limits: { maxFailedAttempts: config.loginMaxFailedAttempts, lockMinutes: config.loginLockMinutes, refreshTtlDays: config.refreshTokenTtlDays },
+    supabase: extras.supabase,
     clock: () => new Date(clock.now),
   });
   const deps: ServerDeps = { ledger: new LedgerService(stores.ledger), identity, audit, tokens, config };

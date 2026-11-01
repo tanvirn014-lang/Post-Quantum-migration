@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { EmailAlreadyRegisteredError } from "../../identity/errors.js";
 import type { Customer, NewCustomer, NewUser, RefreshTokenRecord, User } from "../../identity/types.js";
-import type { IdentityStore, UserPatch } from "../../ports/identity-store.js";
+import type { ExternalCustomerInput, IdentityStore, UserPatch } from "../../ports/identity-store.js";
 
 /** In-process IdentityStore for tests and database-free local runs. Not for production. */
 export class MemoryIdentityStore implements IdentityStore {
@@ -30,6 +30,7 @@ export class MemoryIdentityStore implements IdentityStore {
       mustChangePassword: input.mustChangePassword,
       createdAt: new Date(),
       lastLoginAt: null,
+      supabaseUserId: null,
     };
     this.users.set(user.id, user);
     return user;
@@ -81,6 +82,31 @@ export class MemoryIdentityStore implements IdentityStore {
   async findUserById(id: string): Promise<User | null> {
     const u = this.users.get(id);
     return u ? { ...u } : null;
+  }
+
+  async findUserBySupabaseId(supabaseUserId: string): Promise<User | null> {
+    for (const u of this.users.values()) if (u.supabaseUserId === supabaseUserId) return { ...u };
+    return null;
+  }
+
+  async linkSupabaseUser(userId: string, supabaseUserId: string): Promise<User | null> {
+    const existing = this.users.get(userId);
+    if (!existing) return null;
+    const updated = { ...existing, supabaseUserId };
+    this.users.set(userId, updated);
+    return { ...updated };
+  }
+
+  async provisionExternalCustomer(input: ExternalCustomerInput): Promise<{ customer: Customer; user: User }> {
+    this.assertCustomerEmailFree(input.email);
+    this.assertUserEmailFree(input.email);
+    for (const u of this.users.values()) if (u.supabaseUserId === input.supabaseUserId) throw new EmailAlreadyRegisteredError();
+    const customer: Customer = { id: randomUUID(), fullName: input.fullName, email: input.email, createdAt: new Date() };
+    this.customers.set(customer.id, customer);
+    const user = this.insertUser({ email: input.email, passwordHash: input.passwordHash, role: "customer", customerId: customer.id, mustChangePassword: false });
+    const linked = { ...user, supabaseUserId: input.supabaseUserId };
+    this.users.set(user.id, linked);
+    return { customer: { ...customer }, user: { ...linked } };
   }
 
   async listUsers(): Promise<User[]> {

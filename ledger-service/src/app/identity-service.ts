@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
   CurrentPasswordIncorrectError,
   ForbiddenError,
@@ -13,6 +13,7 @@ import type { Role } from "../identity/roles.js";
 import { generateRefreshToken, hashRefreshToken, type TokenService } from "../identity/tokens.js";
 import { toPublicUser, type Customer, type PublicUser, type User } from "../identity/types.js";
 import type { IdentityStore } from "../ports/identity-store.js";
+import type { SupabaseIdentity, SupabaseVerifier } from "../ports/supabase-verifier.js";
 import type { AuditService } from "./audit-service.js";
 
 export interface RequestContext {
@@ -35,6 +36,9 @@ export interface IdentityServiceDeps {
   hasher: PasswordHasher;
   audit: AuditService;
   limits: { maxFailedAttempts: number; lockMinutes: number; refreshTtlDays: number };
+  /** Optional add-on identity layer. When set, access tokens that are not valid local tokens are
+   *  verified against it and resolved to (or provisioned as) a local customer. */
+  supabase?: SupabaseVerifier | undefined;
   clock?: () => Date;
 }
 
@@ -208,12 +212,80 @@ export class IdentityService {
   }
 
   /** Verifies the access token and loads the live user, so disabling an account or changing a
-   *  role takes effect immediately rather than when the token expires. */
+   *  role takes effect immediately rather than when the token expires. A local EdDSA token is
+   *  tried first; if it does not verify and a Supabase verifier is configured, the token is
+   *  checked against Supabase and resolved to (or provisioned as) a local customer. */
   async authenticate(accessToken: string): Promise<User> {
-    const claims = await this.deps.tokens.verifyAccessToken(accessToken);
-    const user = await this.deps.store.findUserById(claims.userId);
-    if (!user || user.status !== "active") throw new InvalidTokenError();
-    return user;
+    let claims: Awaited<ReturnType<TokenService["verifyAccessToken"]>> | null = null;
+    try {
+      claims = await this.deps.tokens.verifyAccessToken(accessToken);
+    } catch {
+      claims = null;
+    }
+    if (claims) {
+      const user = await this.deps.store.findUserById(claims.userId);
+      if (!user || user.status !== "active") throw new InvalidTokenError();
+      return user;
+    }
+    if (this.deps.supabase) {
+      const identity = await this.deps.supabase.verify(accessToken);
+      return this.resolveSupabaseUser(identity);
+    }
+    throw new InvalidTokenError();
+  }
+
+  /** Links a verified Supabase identity to a local user, provisioning a customer on first sight.
+   *  Staff accounts are never reachable this way: they authenticate only through local login. */
+  private async resolveSupabaseUser(identity: SupabaseIdentity): Promise<User> {
+    const bySupabase = await this.deps.store.findUserBySupabaseId(identity.supabaseUserId);
+    if (bySupabase) {
+      if (bySupabase.status !== "active") throw new InvalidTokenError();
+      return bySupabase;
+    }
+
+    const email = normalizeEmail(identity.email);
+    const byEmail = await this.deps.store.findUserByEmail(email);
+    if (byEmail) {
+      if (byEmail.role !== "customer" || byEmail.status !== "active") throw new InvalidTokenError();
+      const linked = await this.deps.store.linkSupabaseUser(byEmail.id, identity.supabaseUserId);
+      await this.deps.audit.record({
+        actorUserId: byEmail.id,
+        actorRole: byEmail.role,
+        action: "auth.external_link",
+        resourceType: "user",
+        resourceId: byEmail.id,
+        outcome: "success",
+        details: { provider: "supabase" },
+      });
+      return linked ?? byEmail;
+    }
+
+    const fullName = identity.fullName?.trim() || email.split("@")[0] || email;
+    // A high-entropy hash the user will never hold: the local password path can never match it.
+    const unusableHash = await this.deps.hasher.hash(randomBytes(32).toString("base64url"));
+    try {
+      const { user } = await this.deps.store.provisionExternalCustomer({
+        supabaseUserId: identity.supabaseUserId,
+        email,
+        fullName,
+        passwordHash: unusableHash,
+      });
+      await this.deps.audit.record({
+        actorUserId: user.id,
+        actorRole: user.role,
+        action: "auth.external_provision",
+        resourceType: "user",
+        resourceId: user.id,
+        outcome: "success",
+        details: { provider: "supabase" },
+      });
+      return user;
+    } catch {
+      // A concurrent request may have won the provisioning race; adopt its result.
+      const raced = await this.deps.store.findUserBySupabaseId(identity.supabaseUserId);
+      if (raced && raced.status === "active") return raced;
+      throw new InvalidTokenError();
+    }
   }
 
   async changePassword(userId: string, current: string, next: string, ctx: RequestContext): Promise<Session> {
