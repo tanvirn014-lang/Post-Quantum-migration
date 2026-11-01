@@ -12,7 +12,7 @@ const SECRET = "partner-test-secret-0123456789abcdef0123456789";
 
 function assertionFor(method: string, url: string, overrides: Partial<PeerAssertion> = {}): PeerAssertion {
   return {
-    v: 1,
+    v: 2,
     peerId: "peer-hybrid-bank",
     peerName: "Simulated Hybrid Bank",
     keyExchange: "hybrid",
@@ -20,6 +20,7 @@ function assertionFor(method: string, url: string, overrides: Partial<PeerAssert
     decision: "allowed-hybrid",
     correlationId: randomUUID(),
     iat: Math.floor(Date.now() / 1000),
+    jti: randomUUID(),
     method,
     path: url,
     ...overrides,
@@ -116,6 +117,17 @@ describe("partner API (reachable only through the sidecar)", () => {
     it("rejects a stale assertion (replay window)", async () => {
       const old = assertionFor("POST", "/partner/v1/payments", { iat: Math.floor(Date.now() / 1000) - 120 });
       assert.strictEqual((await post(payment(), { assertion: old })).statusCode, 401);
+    });
+
+    it("rejects a replayed assertion (the same jti cannot be used twice)", async () => {
+      // Same signed token twice, with different idempotency keys so idempotency is not what blocks it.
+      const token = signAssertion(assertionFor("POST", "/partner/v1/payments"), SECRET);
+      const first = await post(payment(), { assertion: token, key: randomUUID() });
+      assert.strictEqual(first.statusCode, 201, first.body);
+      const replay = await post(payment(), { assertion: token, key: randomUUID() });
+      assert.strictEqual(replay.statusCode, 401, "a captured assertion cannot be replayed");
+      assert.strictEqual(replay.json().error.code, "PARTNER_ASSERTION_INVALID");
+      assert.strictEqual(await balance(), "12500", "only the first payment posted");
     });
 
     it("rejects an assertion bound to a different path or method (cannot be reused for another request)", async () => {

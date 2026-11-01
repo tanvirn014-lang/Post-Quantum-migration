@@ -409,7 +409,7 @@ export class Sidecar {
     headers["x-request-id"] = ctx.correlationId;
     headers["x-sidecar-assertion"] = signAssertion(
       {
-        v: 1,
+        v: 2,
         peerId: peer.id,
         peerName: peer.name,
         keyExchange: ctx.keyExchange,
@@ -417,6 +417,7 @@ export class Sidecar {
         decision: ctx.outcome.decision,
         correlationId: ctx.correlationId,
         iat: Math.floor(Date.now() / 1000),
+        jti: randomUUID(),
         method,
         path,
       },

@@ -57,7 +57,7 @@ describe("policy decision table (proposal 8.2, hypothesis H3)", () => {
 
 describe("peer assertion (sidecar -> core)", () => {
   const secret = "s".repeat(40);
-  const payload: PeerAssertion = { v: 1, peerId: "p1", peerName: "P1", keyExchange: "hybrid", negotiatedGroup: "X25519MLKEM768", decision: "allowed-hybrid", correlationId: "c1", iat: 1_000_000, method: "POST", path: "/partner/v1/payments" };
+  const payload: PeerAssertion = { v: 2, peerId: "p1", peerName: "P1", keyExchange: "hybrid", negotiatedGroup: "X25519MLKEM768", decision: "allowed-hybrid", correlationId: "c1", iat: 1_000_000, jti: "jti-1", method: "POST", path: "/partner/v1/payments" };
 
   it("round-trips", () => {
     assert.deepStrictEqual(verifyAssertion(signAssertion(payload, secret), secret, { now: 1_000_005 }), payload);

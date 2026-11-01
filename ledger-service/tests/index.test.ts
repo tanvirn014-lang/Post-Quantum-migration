@@ -15,6 +15,7 @@ import "./http/supabase-auth.test.js";
 import "./http/rbac.test.js";
 import "./http/audit.test.js";
 import "./http/partner.test.js";
+import "./partner/replay-cache.test.js";
 import "./http/cors.test.js";
 import "./http/log-hygiene.test.js";
 // Skip themselves unless a Postgres server is reachable - see the files for how to run them.

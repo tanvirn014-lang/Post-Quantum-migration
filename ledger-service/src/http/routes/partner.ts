@@ -2,6 +2,7 @@ import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { AccountNotFoundError, DomainError, MissingIdempotencyKeyError } from "../../domain/errors.js";
 import { verifyAssertion, type PeerAssertion } from "../../partner/assertion.js";
+import { AssertionReplayCache } from "../../partner/replay-cache.js";
 import { toTransactionDTO } from "../dto.js";
 import type { RouteDeps } from "../deps.js";
 import { accountId, currencyCode, idempotencyKeyHeader, positiveMinorUnitsString } from "../schemas.js";
@@ -70,6 +71,9 @@ export function registerPartnerRoutes(deps: RouteDeps): FastifyPluginAsync {
   const { ledger, identity, audit, config } = deps;
   const secret = config.sidecarAssertionSecret;
   const limit = { rateLimit: { max: 120, timeWindow: "1 minute", keyGenerator: peerKey } };
+  // Single-use guard: an assertion's jti is accepted once. TTL is twice the 30 s freshness window,
+  // after which verifyAssertion's own staleness check is the only guard needed.
+  const replay = new AssertionReplayCache(60_000);
 
   return async (app) => {
     app.decorateRequest("partner", null);
@@ -81,6 +85,8 @@ export function registerPartnerRoutes(deps: RouteDeps): FastifyPluginAsync {
       if (!assertion || (assertion.decision !== "allowed-hybrid" && assertion.decision !== "allowed-fallback")) {
         throw new PartnerAssertionInvalidError();
       }
+      // Reject a replay: the same signed assertion (its jti) cannot be used twice within the window.
+      if (!replay.checkAndRecord(assertion.jti)) throw new PartnerAssertionInvalidError();
       req.partner = assertion;
     });
 

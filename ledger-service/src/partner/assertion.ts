@@ -8,7 +8,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * is service authentication on a private network, not a post-quantum construction.
  */
 export interface PeerAssertion {
-  v: 1;
+  v: 2;
   peerId: string;
   peerName: string;
   keyExchange: "hybrid" | "classical" | "unknown";
@@ -17,6 +17,8 @@ export interface PeerAssertion {
   correlationId: string;
   /** Unix seconds when signed. */
   iat: number;
+  /** Unique per assertion; the core rejects a repeat within the freshness window (replay defence). */
+  jti: string;
   method: string;
   path: string;
 }
@@ -55,7 +57,7 @@ export function verifyAssertion(token: string, secret: string, opts: VerifyOptio
   } catch {
     return null;
   }
-  if (payload.v !== 1 || typeof payload.iat !== "number") return null;
+  if (payload.v !== 2 || typeof payload.iat !== "number" || typeof payload.jti !== "string") return null;
   const now = opts.now ?? Math.floor(Date.now() / 1000);
   if (Math.abs(now - payload.iat) > (opts.maxAgeSeconds ?? 30)) return null;
   if (opts.method !== undefined && payload.method !== opts.method) return null;
