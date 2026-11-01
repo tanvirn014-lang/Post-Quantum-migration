@@ -107,8 +107,8 @@ didactic and performs no cryptanalysis.
 | 3 | pqc-sidecar + peer simulator | done 2026-11-01 - 91 sidecar tests; 7 scenarios pass on the live stack |
 | 4 | partner API integration | done 2026-11-01 - 131 ledger + 94 sidecar tests; live end-to-end payment verified |
 | 5 | CBOM, HNDL simulator, benchmark | done 2026-11-01 - 142 security-service tests; CBOM, HNDL, benchmark ingestion live (section 11) |
-| 6 | frontend auth + security console | auth gate, console pages, provenance badges done (127 tests); research pages (CBOM, HNDL, benchmarks, experiments) in progress |
-| 7 | e2e validation, evidence, docs | e2e script 50/50 on the live stack (`evidence/e2e/`); benchmark evidence run, claim ledger, runbook in progress |
+| 6 | frontend auth + security console | done 2026-11-01 - auth gate, console pages, provenance badges, CBOM / HNDL / benchmarks / experiments pages; 166 web tests; research pages checked against live API responses, **not yet viewed in a browser** |
+| 7 | e2e validation, evidence, docs | done 2026-11-01 - e2e 50/50 (`evidence/e2e/`), clean benchmark run, claim ledger, traceability, runbook |
 
 ## 7. Stage 1 findings (security defects in the pre-existing backend, now fixed)
 
@@ -235,3 +235,21 @@ the one invalid run that had been published is flagged `invalid` instead of bein
 
 **Not covered / next:** HKDF and the benchmark/simulator tokens are not yet in the CBOM register; cross-machine
 benchmark runs; Experiment D (HNDL on real captures) is out of scope.
+
+## 12. Final verification (2026-11-01)
+
+Suites: ledger 132, security 144, sidecar 113, web 166 - 555 tests, all passing. Live stack e2e: 50/50 (latest
+`evidence/e2e/2026-11-01T00-24-56-403Z/`). `node scripts/claim-audit.mjs`: 7 occurrences of restricted phrases, all negations.
+
+Known gaps carried forward:
+- The four research pages were verified by component tests and by feeding live API responses through their formatters
+  (the sandbox did not allow reading staff credentials for a scripted browser login); they have not been looked at in a
+  browser as a staff user. Customer-side pages were verified live in the browser, including the role redirect.
+- `npm run lint` in `moneypurse-web` fails with 393 errors in files that predate this work (dashboard hook, chart,
+  existing tests, compiled `dist-tests`); type-check and production build pass.
+- The CBOM ground truth was prepared by an AI assistant and needs independent human review; HKDF and the benchmark and
+  simulator service tokens are missing from the usage register.
+- Benchmarks are one laptop on loopback; cross-machine runs and Experiment D are not done.
+- The sidecar-to-core hop is plain HTTP with an HMAC-signed assertion; certificates and JWTs are classical.
+- Backend follow-ups noted by the frontend work: include the ground-truth scope and preparer in the comparison response;
+  publish the permission set instead of mirroring it in the UI.

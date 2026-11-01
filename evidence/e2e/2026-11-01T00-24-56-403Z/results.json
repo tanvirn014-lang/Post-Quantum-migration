@@ -1,0 +1,537 @@
+{
+  "meta": {
+    "runId": "2026-11-01T00-24-56-403Z",
+    "startedAt": "2026-11-01T00:24:56.403Z",
+    "finishedAt": "2026-11-01T00:25:17.207Z",
+    "commit": "f77181cdd2952166d3b048658bf68a67322e18f1",
+    "workingTreeDirty": false,
+    "node": "26.4.0",
+    "openssl": "3.5.7",
+    "host": "win32 10.0.26200 12th Gen Intel(R) Core(TM) i5-12500H",
+    "sidecar": {
+      "instanceId": "sidecar-Tanvir-ZBook-950edb9a",
+      "startedAt": "2026-10-31T20:06:17.521Z"
+    },
+    "totals": {
+      "passed": 50,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "results": [
+    {
+      "section": "1. Services",
+      "name": "ledger is healthy",
+      "status": "PASS",
+      "detail": "HTTP 200"
+    },
+    {
+      "section": "1. Services",
+      "name": "security is healthy",
+      "status": "PASS",
+      "detail": "HTTP 200"
+    },
+    {
+      "section": "1. Services",
+      "name": "sidecar is healthy",
+      "status": "PASS",
+      "detail": "HTTP 200"
+    },
+    {
+      "section": "1. Services",
+      "name": "simulator is healthy",
+      "status": "PASS",
+      "detail": "HTTP 200"
+    },
+    {
+      "section": "1. Services",
+      "name": "the sidecar is ready and has applied a configuration",
+      "status": "PASS",
+      "detail": "config v12, profile hybrid-preferred"
+    },
+    {
+      "section": "2. Authentication and role-based access",
+      "name": "a wrong password is rejected with a generic error",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "2. Authentication and role-based access",
+      "name": "a customer cannot read the security console",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "2. Authentication and role-based access",
+      "name": "an operator cannot read the security console",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "2. Authentication and role-based access",
+      "name": "an auditor can read the security console",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "2. Authentication and role-based access",
+      "name": "an auditor cannot change the TLS profile",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "2. Authentication and role-based access",
+      "name": "a customer cannot read the audit log",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "2. Authentication and role-based access",
+      "name": "a customer sees only their own accounts",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "2. Authentication and role-based access",
+      "name": "a customer cannot read another customer's account (same 404 as nonexistent)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "2. Authentication and role-based access",
+      "name": "a negative transfer amount (which would reverse direction) is rejected",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "3. Experiment B and C scenarios (simulated peers -> sidecar, real TLS 1.3)",
+      "name": "scenario hybrid-peer-hybrid-required: expected allowed-hybrid, observed allowed-hybrid",
+      "status": "PASS",
+      "detail": "group=X25519MLKEM768 hello=1457B",
+      "evidence": {
+        "connected": true,
+        "handshakeMs": 7.869,
+        "protocol": "TLSv1.3",
+        "cipher": "TLS_AES_256_GCM_SHA384",
+        "offeredGroups": [
+          "X25519MLKEM768",
+          "X25519"
+        ],
+        "selectedGroup": "X25519MLKEM768",
+        "clientHelloBytes": 1457,
+        "serverKeyShareBytes": 1120,
+        "httpStatus": 200,
+        "peerSawDecision": "allowed-hybrid",
+        "transactionId": null,
+        "error": null
+      }
+    },
+    {
+      "section": "3. Experiment B and C scenarios (simulated peers -> sidecar, real TLS 1.3)",
+      "name": "scenario classical-peer-fallback-allowed: expected allowed-fallback, observed allowed-fallback",
+      "status": "PASS",
+      "detail": "group=X25519 hello=235B",
+      "evidence": {
+        "connected": true,
+        "handshakeMs": 2.224,
+        "protocol": "TLSv1.3",
+        "cipher": "TLS_AES_256_GCM_SHA384",
+        "offeredGroups": [
+          "X25519"
+        ],
+        "selectedGroup": "X25519",
+        "clientHelloBytes": 235,
+        "serverKeyShareBytes": 32,
+        "httpStatus": 200,
+        "peerSawDecision": "allowed-fallback",
+        "transactionId": null,
+        "error": null
+      }
+    },
+    {
+      "section": "3. Experiment B and C scenarios (simulated peers -> sidecar, real TLS 1.3)",
+      "name": "scenario classical-peer-fallback-forbidden: expected rejected-violation, observed rejected-violation",
+      "status": "PASS",
+      "detail": "group=X25519 hello=235B",
+      "evidence": {
+        "connected": true,
+        "handshakeMs": 2.219,
+        "protocol": "TLSv1.3",
+        "cipher": "TLS_AES_256_GCM_SHA384",
+        "offeredGroups": [
+          "X25519"
+        ],
+        "selectedGroup": "X25519",
+        "clientHelloBytes": 235,
+        "serverKeyShareBytes": 32,
+        "httpStatus": 403,
+        "peerSawDecision": null,
+        "transactionId": null,
+        "error": null
+      }
+    },
+    {
+      "section": "3. Experiment B and C scenarios (simulated peers -> sidecar, real TLS 1.3)",
+      "name": "scenario unregistered-peer: expected rejected-unknown-peer, observed rejected-unknown-peer",
+      "status": "PASS",
+      "detail": "group=X25519MLKEM768 hello=1457B",
+      "evidence": {
+        "connected": true,
+        "handshakeMs": 3.987,
+        "protocol": "TLSv1.3",
+        "cipher": "TLS_AES_256_GCM_SHA384",
+        "offeredGroups": [
+          "X25519MLKEM768",
+          "X25519"
+        ],
+        "selectedGroup": "X25519MLKEM768",
+        "clientHelloBytes": 1457,
+        "serverKeyShareBytes": 1120,
+        "httpStatus": 403,
+        "peerSawDecision": null,
+        "transactionId": null,
+        "error": null
+      }
+    },
+    {
+      "section": "3. Experiment B and C scenarios (simulated peers -> sidecar, real TLS 1.3)",
+      "name": "scenario untrusted-certificate: expected rejected-unknown-peer, observed rejected-unknown-peer",
+      "status": "PASS",
+      "detail": "group=X25519MLKEM768 hello=1457B",
+      "evidence": {
+        "connected": true,
+        "handshakeMs": 2.181,
+        "protocol": "TLSv1.3",
+        "cipher": "TLS_AES_256_GCM_SHA384",
+        "offeredGroups": [
+          "X25519MLKEM768",
+          "X25519"
+        ],
+        "selectedGroup": "X25519MLKEM768",
+        "clientHelloBytes": 1457,
+        "serverKeyShareBytes": 1120,
+        "httpStatus": 403,
+        "peerSawDecision": null,
+        "transactionId": null,
+        "error": null
+      }
+    },
+    {
+      "section": "3. Experiment B and C scenarios (simulated peers -> sidecar, real TLS 1.3)",
+      "name": "scenario no-client-certificate: expected rejected-unknown-peer, observed rejected-unknown-peer",
+      "status": "PASS",
+      "detail": "group=X25519MLKEM768 hello=1457B",
+      "evidence": {
+        "connected": true,
+        "handshakeMs": 2.249,
+        "protocol": "TLSv1.3",
+        "cipher": "TLS_AES_256_GCM_SHA384",
+        "offeredGroups": [
+          "X25519MLKEM768",
+          "X25519"
+        ],
+        "selectedGroup": "X25519MLKEM768",
+        "clientHelloBytes": 1457,
+        "serverKeyShareBytes": 1120,
+        "httpStatus": 403,
+        "peerSawDecision": null,
+        "transactionId": null,
+        "error": null
+      }
+    },
+    {
+      "section": "3. Experiment B and C scenarios (simulated peers -> sidecar, real TLS 1.3)",
+      "name": "scenario clienthello-downgrade-tamper: expected handshake-failed, observed handshake-failed",
+      "status": "PASS",
+      "detail": "group=X25519 hello=1457B",
+      "evidence": {
+        "connected": false,
+        "handshakeMs": null,
+        "protocol": null,
+        "cipher": null,
+        "offeredGroups": [
+          "X25519MLKEM768",
+          "X25519"
+        ],
+        "selectedGroup": "X25519",
+        "clientHelloBytes": 1457,
+        "serverKeyShareBytes": 32,
+        "httpStatus": null,
+        "peerSawDecision": null,
+        "transactionId": null,
+        "error": "ERR_SSL_DECRYPTION_FAILED_OR_BAD_RECORD_MAC: 10930000:error:0A000119:SSL routines:tls_get_more_records:decryption failed or bad record mac:openssl\\ssl\\record\\methods\\tls_common.c:874:"
+      }
+    },
+    {
+      "section": "3. Experiment B and C scenarios (simulated peers -> sidecar, real TLS 1.3)",
+      "name": "hybrid server key share is 1120 bytes (RFC 10024) and classical is 32",
+      "status": "PASS",
+      "detail": "1120 / 32"
+    },
+    {
+      "section": "4. End-to-end partner payments (peer -> sidecar -> core -> ledger)",
+      "name": "partner-payment-hybrid: allowed-hybrid",
+      "status": "PASS",
+      "detail": "tx txn_cc9387a7-75e8-42a9-9390-f9e39adac908"
+    },
+    {
+      "section": "4. End-to-end partner payments (peer -> sidecar -> core -> ledger)",
+      "name": "partner-payment-hybrid: the ledger transaction records the verified key exchange",
+      "status": "PASS",
+      "detail": "{\"decision\":\"allowed-hybrid\",\"keyExchange\":\"hybrid\",\"negotiatedGroup\":\"X25519MLKEM768\"}"
+    },
+    {
+      "section": "4. End-to-end partner payments (peer -> sidecar -> core -> ledger)",
+      "name": "partner-payment-classical-fallback: allowed-fallback",
+      "status": "PASS",
+      "detail": "tx txn_1ea90f59-70f0-47d3-a870-180ef8597b2a"
+    },
+    {
+      "section": "4. End-to-end partner payments (peer -> sidecar -> core -> ledger)",
+      "name": "partner-payment-classical-fallback: the ledger transaction records the verified key exchange",
+      "status": "PASS",
+      "detail": "{\"decision\":\"allowed-fallback\",\"keyExchange\":\"classical\",\"negotiatedGroup\":\"X25519\"}"
+    },
+    {
+      "section": "4. End-to-end partner payments (peer -> sidecar -> core -> ledger)",
+      "name": "the customer balance rose by exactly the two payments",
+      "status": "PASS",
+      "detail": "25025000 -> 25030000"
+    },
+    {
+      "section": "4. End-to-end partner payments (peer -> sidecar -> core -> ledger)",
+      "name": "a direct call to the core with a forged assertion is refused",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "4. End-to-end partner payments (peer -> sidecar -> core -> ledger)",
+      "name": "double entry holds across the whole ledger: all balances sum to zero",
+      "status": "PASS",
+      "detail": "sum=0, 14 accounts"
+    },
+    {
+      "section": "5. Experiment E: live TLS profile switch (crypto agility)",
+      "name": "the sidecar applies the new profile to new connections without a restart",
+      "status": "PASS",
+      "detail": "applied after 837 ms (polling interval bound)"
+    },
+    {
+      "section": "5. Experiment E: live TLS profile switch (crypto agility)",
+      "name": "under hybrid-only a classical-only handshake is refused",
+      "status": "PASS",
+      "detail": "observed handshake-failed",
+      "evidence": {
+        "connected": false,
+        "handshakeMs": null,
+        "protocol": null,
+        "cipher": null,
+        "offeredGroups": [
+          "X25519"
+        ],
+        "selectedGroup": null,
+        "clientHelloBytes": 235,
+        "serverKeyShareBytes": null,
+        "httpStatus": null,
+        "peerSawDecision": null,
+        "transactionId": null,
+        "error": "ERR_SSL_SSL/TLS_ALERT_HANDSHAKE_FAILURE: 10930000:error:0A000410:SSL routines:ssl3_read_bytes:ssl/tls alert handshake failure:openssl\\ssl\\record\\rec_layer_s3.c:918:SSL alert number 40"
+      }
+    },
+    {
+      "section": "5. Experiment E: live TLS profile switch (crypto agility)",
+      "name": "under hybrid-only a hybrid peer still connects",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "5. Experiment E: live TLS profile switch (crypto agility)",
+      "name": "under the classical baseline even a hybrid-capable peer is forced onto X25519 (hybrid-required policy then rejects it)",
+      "status": "PASS",
+      "detail": "observed rejected-violation"
+    },
+    {
+      "section": "5. Experiment E: live TLS profile switch (crypto agility)",
+      "name": "restoring hybrid-preferred restores hybrid",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "5. Experiment E: live TLS profile switch (crypto agility)",
+      "name": "time-to-apply is recorded per configuration version",
+      "status": "PASS",
+      "detail": "5023ms, 4951ms, 974ms",
+      "evidence": [
+        {
+          "version": 15,
+          "profile": "hybrid-preferred",
+          "timeToApplyMs": 5023
+        },
+        {
+          "version": 14,
+          "profile": "classical-baseline",
+          "timeToApplyMs": 4951
+        },
+        {
+          "version": 13,
+          "profile": "hybrid-only",
+          "timeToApplyMs": 974
+        }
+      ]
+    },
+    {
+      "section": "5. Experiment E: live TLS profile switch (crypto agility)",
+      "name": "every profile change is in the configuration audit log with the actor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "6. Telemetry and alerts",
+      "name": "telemetry contains 'allowed-hybrid' events",
+      "status": "PASS",
+      "detail": "14 in 24h"
+    },
+    {
+      "section": "6. Telemetry and alerts",
+      "name": "telemetry contains 'allowed-fallback' events",
+      "status": "PASS",
+      "detail": "8 in 24h"
+    },
+    {
+      "section": "6. Telemetry and alerts",
+      "name": "telemetry contains 'rejected-violation' events",
+      "status": "PASS",
+      "detail": "7 in 24h"
+    },
+    {
+      "section": "6. Telemetry and alerts",
+      "name": "telemetry contains 'rejected-unknown-peer' events",
+      "status": "PASS",
+      "detail": "12 in 24h"
+    },
+    {
+      "section": "6. Telemetry and alerts",
+      "name": "telemetry contains 'handshake-failed' events",
+      "status": "PASS",
+      "detail": "7 in 24h"
+    },
+    {
+      "section": "6. Telemetry and alerts",
+      "name": "the sidecar reports in sync and not stale",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "6. Telemetry and alerts",
+      "name": "a security admin can acknowledge an alert",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "7. Audit integrity",
+      "name": "the banking audit chain verifies",
+      "status": "PASS",
+      "detail": "73 events, head f096256a1cdf",
+      "evidence": {
+        "headHash": "f096256a1cdfdbd37165de5b995297eb9625f148e2c5d33488a401105687617f"
+      }
+    },
+    {
+      "section": "7. Audit integrity",
+      "name": "the security configuration audit chain verifies",
+      "status": "PASS",
+      "detail": "48 events, head 22da41372cb5",
+      "evidence": {
+        "headHash": "22da41372cb5bd4fb52e7662b56c300f5289574ce91417c5c96ef1cd8518a9b5"
+      }
+    },
+    {
+      "section": "8. Research features (checked only when deployed)",
+      "name": "a CycloneDX CBOM is generated and validates against the schema",
+      "status": "PASS",
+      "detail": "id a965b383-addb-4ccb-a4eb-f0bafb2aac40",
+      "evidence": {
+        "valid": true,
+        "errors": [],
+        "schema": "CycloneDX 1.7 JSON (official schema, vendored)"
+      }
+    },
+    {
+      "section": "8. Research features (checked only when deployed)",
+      "name": "the CBOM is compared with the manually prepared ground truth",
+      "status": "PASS",
+      "detail": "completeness 0.8, precision 1",
+      "evidence": {
+        "byKind": {
+          "protocol": {
+            "generated": 1,
+            "groundTruth": 1,
+            "truePositives": 1,
+            "falseNegatives": 0,
+            "falsePositives": 0
+          },
+          "algorithm": {
+            "generated": 10,
+            "groundTruth": 10,
+            "truePositives": 10,
+            "falseNegatives": 0,
+            "falsePositives": 0
+          },
+          "certificate": {
+            "generated": 7,
+            "groundTruth": 7,
+            "truePositives": 7,
+            "falseNegatives": 0,
+            "falsePositives": 0
+          },
+          "related-crypto-material": {
+            "generated": 6,
+            "groundTruth": 12,
+            "truePositives": 6,
+            "falseNegatives": 6,
+            "falsePositives": 0
+          }
+        },
+        "precision": 1,
+        "completeness": 0.8,
+        "denominators": {
+          "precision": "matched generated assets / generated cryptographic assets (24 / 24)",
+          "completeness": "matched ground-truth items / ground-truth items (24 / 30)"
+        },
+        "truePositives": 24,
+        "falseNegatives": 6,
+        "falsePositives": 0,
+        "locationRecall": {
+          "found": 33,
+          "ratio": 0.3929,
+          "groundTruthLocations": 84
+        },
+        "generatedAssets": 24,
+        "groundTruthItems": 30,
+        "provenanceAgreement": {
+          "ratio": 1,
+          "matched": 24,
+          "agreeing": 24
+        }
+      }
+    },
+    {
+      "section": "8. Research features (checked only when deployed)",
+      "name": "the HNDL simulator labels itself a simulation",
+      "status": "PASS",
+      "detail": "Educational simulation. It does not break any real key and runs no quantum algorithm: the adversary's capability is an assumption you choose, and the cryptography it then meets is real. Nothing here predicts when, or whether, such a computer will exist."
+    },
+    {
+      "section": "8. Research features (checked only when deployed)",
+      "name": "under an assumed X25519 break the classical capture opens and the hybrid capture stays closed",
+      "status": "PASS",
+      "detail": "The X25519 half was recovered but the session key also depends on the ML-KEM-768 secret, which the adversary does not have. The AES-GCM authentication check fails, so the recording stays closed."
+    },
+    {
+      "section": "8. Research features (checked only when deployed)",
+      "name": "the Mosca calculator reports 3 exposure years for X=10, Y=5, Z=12",
+      "status": "PASS",
+      "detail": ""
+    }
+  ]
+}
