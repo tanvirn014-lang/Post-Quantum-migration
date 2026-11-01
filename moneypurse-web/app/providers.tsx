@@ -5,24 +5,30 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthGate } from "../components/auth/AuthGate";
 import { session } from "../lib/api/clients";
 import { isApiRequestError } from "../lib/api/api-client";
-import { restoreExternalSession } from "../lib/auth/customer-auth";
+import { restoreExternalSession, type CustomerAuthGateway } from "../lib/auth/customer-auth";
 import { getSupabaseGateway } from "../lib/auth/supabase-gateway";
-import { useAuthActions, useSession } from "../hooks/useSession";
+import { useSession } from "../hooks/useSession";
 
 /** Restores a session from the refresh cookie once at start, and wipes cached data whenever the
- *  signed-in user changes, so one person data can never show up for the next. */
-function SessionLifecycle({ client }: { client: QueryClient }) {
-  const { restore } = useAuthActions();
+ *  signed-in user changes, so one person data can never show up for the next. The gateway is a prop
+ *  (defaulting to the configured one) so the startup sequence can be tested with a fake. */
+export function SessionLifecycle({ client, gateway = getSupabaseGateway() }: { client: QueryClient; gateway?: CustomerAuthGateway | null }) {
   const { user } = useSession();
   const lastUserId = useRef<string | null>(null);
+  const started = useRef(false);
 
   useEffect(() => {
-    // Prefer a surviving Supabase session; otherwise restore from the local refresh cookie.
+    // Startup restore runs exactly once: establishing a session re-renders this component, and an
+    // effect that re-ran on every render would re-adopt the Supabase token in a loop, flooding the
+    // ledger (429s) and clearing the session on each failure. The ref guard also absorbs React's
+    // development double-invoke. Prefer a surviving Supabase session; else the local refresh cookie.
+    if (started.current) return;
+    started.current = true;
     void (async () => {
-      const restored = await restoreExternalSession(session, getSupabaseGateway());
-      if (!restored) await restore();
+      const restored = await restoreExternalSession(session, gateway);
+      if (!restored) await session.restore();
     })();
-  }, [restore]);
+  }, [gateway]);
 
   useEffect(() => {
     const id = user?.id ?? null;

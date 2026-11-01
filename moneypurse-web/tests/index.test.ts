@@ -26,6 +26,7 @@ import "./components/dashboard/honesty.test.js";
 import "./components/dashboard/WidgetErrorBoundary.test.js";
 import "./components/auth/LoginForm.test.js";
 import "./components/auth/SignupForm.test.js";
+import "./components/auth/SessionLifecycle.test.js";
 import "./components/security/security-console.test.js";
 import "./components/security/research-console.test.js";
 import "./lib/low-balance.test.js";
