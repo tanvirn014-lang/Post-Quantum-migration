@@ -15,6 +15,7 @@ export const PERMISSIONS = [
   "account:create",
   "transfer:create:own",
   "transaction:post:journal",
+  "transaction:reverse",
   "customer:create",
   "user:read",
   "user:create:staff",
@@ -28,7 +29,7 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   customer: ["account:read:own", "transfer:create:own"],
   // Segregation of duties: operators onboard customers and post journal entries but do not
   // originate customer transfers, and cannot read the audit log or manage staff.
-  operator: ["account:read:any", "account:create", "transaction:post:journal", "customer:create", "user:read"],
+  operator: ["account:read:any", "account:create", "transaction:post:journal", "transaction:reverse", "customer:create", "user:read"],
   security_admin: ["user:read", "user:create:staff", "user:disable", "audit:read", "audit:verify"],
   // Auditors are strictly read-only.
   auditor: ["account:read:any", "user:read", "audit:read", "audit:verify"],

@@ -76,3 +76,9 @@ export class SameAccountTransferError extends DomainError {
     super("Source and destination accounts must differ", "SAME_ACCOUNT_TRANSFER");
   }
 }
+
+export class TransactionNotReversibleError extends DomainError {
+  constructor(transactionId: string) {
+    super(`Transaction ${transactionId} cannot be reversed (it does not exist in a reversible state or is already reversed)`, "TRANSACTION_NOT_REVERSIBLE");
+  }
+}

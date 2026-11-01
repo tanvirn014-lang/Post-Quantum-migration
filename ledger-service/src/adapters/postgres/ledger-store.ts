@@ -1,10 +1,10 @@
 import type pg from "pg";
 import { assertAccountsPostable, assertBalanced, assertSufficientFunds, computeNewBalances } from "../../domain/ledger.js";
 import type { Account, AccountKind, AccountStatus, Posting, Transaction, TransactionInput } from "../../domain/ledger.js";
-import { IdempotencyKeyReusedError } from "../../domain/errors.js";
+import { IdempotencyKeyReusedError, TransactionNotFoundError, TransactionNotReversibleError } from "../../domain/errors.js";
 import { hashTransactionRequest } from "../../app/idempotency.js";
 import { newAccountId, newPostingId, newTransactionId } from "../../domain/ids.js";
-import type { CreateAccountInput, LedgerStore, ListAccountsOptions, PostTransactionAudit } from "../../ports/ledger-store.js";
+import type { BalanceDrift, CreateAccountInput, LedgerStore, ListAccountsOptions, PostTransactionAudit, ReverseTransactionInput } from "../../ports/ledger-store.js";
 import { appendAuditEventInTx } from "./audit-append.js";
 
 interface AccountRow {
@@ -251,5 +251,88 @@ export class PostgresLedgerStore implements LedgerStore {
       [accountId, limit],
     );
     return rows.map(mapPostingRow);
+  }
+
+  async reverseTransaction(input: ReverseTransactionInput, auditBuilder?: PostTransactionAudit): Promise<Transaction> {
+    const { originalTransactionId, reason } = input;
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      // Lock the original transaction row so two concurrent reversals cannot both proceed.
+      const { rows: origRows } = await client.query<TransactionRow>("SELECT * FROM transactions WHERE id = $1 FOR UPDATE", [originalTransactionId]);
+      const orig = origRows[0];
+      if (!orig) throw new TransactionNotFoundError(originalTransactionId);
+      if (orig.status !== "posted") throw new TransactionNotReversibleError(originalTransactionId);
+
+      const { rows: postingRows } = await client.query<PostingRow>("SELECT * FROM postings WHERE transaction_id = $1 ORDER BY created_at", [originalTransactionId]);
+      const compensating = postingRows.map(mapPostingRow).map((p) => ({ accountId: p.accountId, amountMinorUnits: -p.amountMinorUnits, currency: p.currency }));
+      assertBalanced(compensating);
+
+      const accountIds = [...new Set(compensating.map((p) => p.accountId))].sort();
+      const { rows: accountRows } = await client.query<AccountRow>("SELECT * FROM accounts WHERE id = ANY($1::text[]) ORDER BY id FOR UPDATE", [accountIds]);
+      const accountsById = new Map(accountRows.map((r) => [r.id, mapAccountRow(r)]));
+      assertAccountsPostable(accountsById, compensating);
+      const newBalances = computeNewBalances(accountsById, compensating);
+      assertSufficientFunds(accountsById, newBalances);
+
+      const context = { reverses: originalTransactionId, reason };
+      const requestHash = hashTransactionRequest({ description: `Reversal of ${originalTransactionId}`, postings: compensating });
+      let reversalRow: TransactionRow;
+      try {
+        const result = await client.query<TransactionRow>(
+          `INSERT INTO transactions (id, idempotency_key, request_hash, description, metadata)
+           VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+          [newTransactionId(), `reverse:${originalTransactionId}`, requestHash, `Reversal of ${originalTransactionId}: ${reason}`, JSON.stringify({ context })],
+        );
+        reversalRow = result.rows[0]!;
+      } catch (err) {
+        // A reversal already exists for this original (unique idempotency key) - it is already reversed.
+        if (isUniqueViolation(err, "transactions_idempotency_key_key")) throw new TransactionNotReversibleError(originalTransactionId);
+        throw err;
+      }
+
+      for (const posting of compensating) {
+        await client.query("INSERT INTO postings (id, transaction_id, account_id, amount_minor_units, currency) VALUES ($1, $2, $3, $4, $5)", [
+          newPostingId(),
+          reversalRow.id,
+          posting.accountId,
+          posting.amountMinorUnits.toString(),
+          posting.currency.toUpperCase(),
+        ]);
+      }
+      for (const [accountId, newBalance] of newBalances) {
+        await client.query("UPDATE accounts SET balance_minor_units = $1 WHERE id = $2", [newBalance.toString(), accountId]);
+      }
+      await client.query("UPDATE transactions SET status = 'reversed' WHERE id = $1", [originalTransactionId]);
+
+      const reversal = mapTransactionRow(reversalRow);
+      if (auditBuilder) {
+        await appendAuditEventInTx(client, auditBuilder(reversal), new Date());
+      }
+      await client.query("COMMIT");
+      return reversal;
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async reconcileBalances(): Promise<BalanceDrift[]> {
+    const { rows } = await this.pool.query<{ id: string; stored: string; derived: string | null }>(
+      `SELECT a.id,
+              a.balance_minor_units AS stored,
+              COALESCE(SUM(p.amount_minor_units), 0) AS derived
+       FROM accounts a
+       LEFT JOIN postings p ON p.account_id = a.id
+       GROUP BY a.id, a.balance_minor_units
+       HAVING a.balance_minor_units <> COALESCE(SUM(p.amount_minor_units), 0)`,
+    );
+    return rows.map((r) => ({
+      accountId: r.id,
+      storedBalanceMinorUnits: BigInt(r.stored),
+      derivedBalanceMinorUnits: BigInt(r.derived ?? "0"),
+    }));
   }
 }

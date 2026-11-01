@@ -1,5 +1,5 @@
 import type { Account, Posting, PostingInput, Transaction, TransactionInput } from "../domain/ledger.js";
-import type { CreateAccountInput, LedgerStore, ListAccountsOptions, PostTransactionAudit } from "../ports/ledger-store.js";
+import type { BalanceDrift, CreateAccountInput, LedgerStore, ListAccountsOptions, PostTransactionAudit, ReverseTransactionInput } from "../ports/ledger-store.js";
 
 export interface TransferInput {
   idempotencyKey: string;
@@ -53,6 +53,15 @@ export class LedgerService {
       },
       audit,
     );
+  }
+
+  reverseTransaction(input: ReverseTransactionInput, audit?: PostTransactionAudit): Promise<Transaction> {
+    return this.store.reverseTransaction(input, audit);
+  }
+
+  /** Read-only integrity sweep: accounts whose stored balance disagrees with their postings. */
+  reconcileBalances(): Promise<BalanceDrift[]> {
+    return this.store.reconcileBalances();
   }
 
   getTransaction(transactionId: string): Promise<{ transaction: Transaction; postings: Posting[] } | null> {

@@ -13,6 +13,18 @@ export interface CreateAccountInput {
   kind?: AccountKind;
 }
 
+export interface ReverseTransactionInput {
+  originalTransactionId: string;
+  reason: string;
+}
+
+/** An account whose stored running balance disagrees with the sum of its postings. */
+export interface BalanceDrift {
+  accountId: string;
+  storedBalanceMinorUnits: bigint;
+  derivedBalanceMinorUnits: bigint;
+}
+
 export interface ListAccountsOptions {
   customerId?: string;
   limit?: number;
@@ -36,6 +48,18 @@ export interface LedgerStore {
    * the same key and a different payload throws IdempotencyKeyReusedError.
    */
   postTransaction(input: TransactionInput, audit?: PostTransactionAudit): Promise<Transaction>;
+
+  /**
+   * Reverses a posted transaction by posting the compensating (negated) entries as a new
+   * transaction and marking the original `reversed` - atomically, in one unit of work, with its
+   * audit entry. History is never mutated. Throws TransactionNotReversibleError if the original is
+   * missing or already reversed. The compensating postings obey the normal overdraft rules.
+   */
+  reverseTransaction(input: ReverseTransactionInput, audit?: PostTransactionAudit): Promise<Transaction>;
+
+  /** Re-derives each account's balance from its postings and returns any that disagree with the
+   *  stored running balance. A read-only integrity sweep; it never writes. */
+  reconcileBalances(): Promise<BalanceDrift[]>;
 
   getTransactionWithPostings(
     transactionId: string,

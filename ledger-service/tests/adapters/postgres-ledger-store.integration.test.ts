@@ -104,6 +104,46 @@ describe(
       assert.equal((await store.getAccount(dest.id))!.balanceMinorUnits, 0n, "target balance untouched");
     });
 
+    it("reverses a posting atomically: compensating entries, original reversed, reconcile clean, double-reverse blocked", async () => {
+      const src = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "BDT", allowOverdraft: true });
+      const dst = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "BDT" });
+      const orig = await store.postTransaction({
+        idempotencyKey: `o-${randomUUID()}`,
+        description: "orig",
+        postings: [
+          { accountId: src.id, amountMinorUnits: -500n, currency: "BDT" },
+          { accountId: dst.id, amountMinorUnits: 500n, currency: "BDT" },
+        ],
+      });
+      const reversal = await store.reverseTransaction({ originalTransactionId: orig.id, reason: "mistake" });
+
+      assert.equal((await store.getAccount(dst.id))!.balanceMinorUnits, 0n);
+      assert.equal((await store.getAccount(src.id))!.balanceMinorUnits, 0n);
+      assert.equal((await store.getTransactionWithPostings(orig.id))!.transaction.status, "reversed");
+      assert.equal((await store.getTransactionWithPostings(reversal.id))!.transaction.status, "posted");
+      assert.deepEqual(await store.reconcileBalances(), []);
+      await assert.rejects(() => store.reverseTransaction({ originalTransactionId: orig.id, reason: "again" }), /cannot be reversed/);
+    });
+
+    it("reconcileBalances detects an account whose stored balance was tampered with", async () => {
+      const src = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "BDT", allowOverdraft: true });
+      const dst = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "BDT" });
+      await store.postTransaction({
+        idempotencyKey: `o-${randomUUID()}`,
+        description: "orig",
+        postings: [
+          { accountId: src.id, amountMinorUnits: -500n, currency: "BDT" },
+          { accountId: dst.id, amountMinorUnits: 500n, currency: "BDT" },
+        ],
+      });
+      await pool.query("UPDATE accounts SET balance_minor_units = balance_minor_units + 1 WHERE id = $1", [dst.id]);
+      const drifts = await store.reconcileBalances();
+      assert.equal(drifts.length, 1);
+      assert.equal(drifts[0]!.accountId, dst.id);
+      assert.equal(drifts[0]!.storedBalanceMinorUnits, 501n);
+      assert.equal(drifts[0]!.derivedBalanceMinorUnits, 500n);
+    });
+
     it("persists an account with a zero starting balance", async () => {
       const account = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "bdt" });
       assert.strictEqual(account.balanceMinorUnits, 0n);

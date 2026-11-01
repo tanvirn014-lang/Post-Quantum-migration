@@ -30,6 +30,10 @@ const journalSchema = z.object({
   metadata: clientMetadata.optional(),
 });
 
+const reverseSchema = z.object({
+  reason: z.string().min(1).max(200),
+});
+
 const transferSchema = z.object({
   fromAccountId: accountId,
   toAccountId: accountId,
@@ -131,6 +135,30 @@ export function registerTransactionRoutes(deps: RouteDeps): FastifyPluginAsync {
       );
       void reply.status(201).send(toTransactionDTO(transaction));
     });
+
+    app.post<{ Params: { id: string } }>(
+      "/transactions/:id/reverse",
+      { preHandler: [guards.authenticate, guards.can("transaction:reverse")] },
+      async (req, reply) => {
+        const user = requireUser(req);
+        const { reason } = reverseSchema.parse(req.body);
+        const reversal = await ledger.reverseTransaction(
+          { originalTransactionId: req.params.id, reason },
+          // Audited inside the reversal transaction (M2 pattern); resourceId is the original.
+          (txn) => ({
+            actorUserId: user.id,
+            actorRole: user.role,
+            action: "transaction.reverse",
+            resourceType: "transaction",
+            resourceId: req.params.id,
+            outcome: "success",
+            ...requestContext(req),
+            details: { reversalTransactionId: txn.id, reason },
+          }),
+        );
+        void reply.status(201).send(toTransactionDTO(reversal));
+      },
+    );
 
     app.get<{ Params: { id: string } }>("/transactions/:id", { preHandler: [guards.authenticate] }, async (req) => {
       const user = requireUser(req);

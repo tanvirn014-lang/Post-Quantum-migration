@@ -1,9 +1,9 @@
 import { assertAccountsPostable, assertBalanced, assertSufficientFunds, computeNewBalances } from "../../domain/ledger.js";
 import { newAccountId, newPostingId, newTransactionId } from "../../domain/ids.js";
 import type { Account, Posting, Transaction, TransactionInput } from "../../domain/ledger.js";
-import { IdempotencyKeyReusedError } from "../../domain/errors.js";
+import { IdempotencyKeyReusedError, TransactionNotFoundError, TransactionNotReversibleError } from "../../domain/errors.js";
 import { hashTransactionRequest } from "../../app/idempotency.js";
-import type { CreateAccountInput, LedgerStore, ListAccountsOptions, PostTransactionAudit } from "../../ports/ledger-store.js";
+import type { BalanceDrift, CreateAccountInput, LedgerStore, ListAccountsOptions, PostTransactionAudit, ReverseTransactionInput } from "../../ports/ledger-store.js";
 import type { AuditStore } from "../../ports/audit-store.js";
 
 /**
@@ -129,5 +129,70 @@ export class MemoryLedgerStore implements LedgerStore {
     const ordered = [...postings].reverse();
     const limit = opts?.limit ?? 50;
     return ordered.slice(0, limit).map((p) => ({ ...p }));
+  }
+
+  async reverseTransaction(input: ReverseTransactionInput, auditBuilder?: PostTransactionAudit): Promise<Transaction> {
+    const orig = this.transactions.get(input.originalTransactionId);
+    if (!orig) throw new TransactionNotFoundError(input.originalTransactionId);
+    if (orig.status !== "posted") throw new TransactionNotReversibleError(input.originalTransactionId);
+
+    const origPostings = this.postingsByTransaction.get(input.originalTransactionId) ?? [];
+    const compensating = origPostings.map((p) => ({ accountId: p.accountId, amountMinorUnits: -p.amountMinorUnits, currency: p.currency }));
+    assertBalanced(compensating);
+    assertAccountsPostable(this.accounts, compensating);
+    const newBalances = computeNewBalances(this.accounts, compensating);
+    assertSufficientFunds(this.accounts, newBalances);
+
+    const reversalId = newTransactionId();
+    const postedAt = new Date();
+    const reversal: Transaction = {
+      id: reversalId,
+      idempotencyKey: `reverse:${input.originalTransactionId}`,
+      description: `Reversal of ${input.originalTransactionId}: ${input.reason}`,
+      status: "posted",
+      postedAt,
+      metadata: { context: { reverses: input.originalTransactionId, reason: input.reason } },
+    };
+    const postings: Posting[] = compensating.map((p) => ({
+      id: newPostingId(),
+      transactionId: reversalId,
+      accountId: p.accountId,
+      amountMinorUnits: p.amountMinorUnits,
+      currency: p.currency.toUpperCase(),
+      createdAt: postedAt,
+    }));
+
+    // Audit before mutating any map, so a failure leaves nothing behind (mirrors postTransaction).
+    if (auditBuilder) {
+      if (!this.audit) throw new Error("MemoryLedgerStore was given no audit appender but a reversal audit was requested");
+      await this.audit.append(auditBuilder({ ...reversal }), new Date());
+    }
+
+    this.transactions.set(reversalId, reversal);
+    this.postingsByTransaction.set(reversalId, postings);
+    for (const posting of postings) {
+      const list = this.postingsByAccount.get(posting.accountId) ?? [];
+      list.push(posting);
+      this.postingsByAccount.set(posting.accountId, list);
+    }
+    for (const [accountId, newBalance] of newBalances) {
+      const account = this.accounts.get(accountId)!;
+      this.accounts.set(accountId, { ...account, balanceMinorUnits: newBalance });
+    }
+    this.transactions.set(input.originalTransactionId, { ...orig, status: "reversed" });
+    this.idempotencyIndex.set(reversal.idempotencyKey, { transactionId: reversalId, requestHash: "reversal" });
+
+    return { ...reversal };
+  }
+
+  async reconcileBalances(): Promise<BalanceDrift[]> {
+    const drifts: BalanceDrift[] = [];
+    for (const account of this.accounts.values()) {
+      const derived = (this.postingsByAccount.get(account.id) ?? []).reduce((sum, p) => sum + p.amountMinorUnits, 0n);
+      if (derived !== account.balanceMinorUnits) {
+        drifts.push({ accountId: account.id, storedBalanceMinorUnits: account.balanceMinorUnits, derivedBalanceMinorUnits: derived });
+      }
+    }
+    return drifts;
   }
 }
