@@ -4,7 +4,8 @@ import type { Account, AccountKind, AccountStatus, Posting, Transaction, Transac
 import { IdempotencyKeyReusedError } from "../../domain/errors.js";
 import { hashTransactionRequest } from "../../app/idempotency.js";
 import { newAccountId, newPostingId, newTransactionId } from "../../domain/ids.js";
-import type { CreateAccountInput, LedgerStore, ListAccountsOptions } from "../../ports/ledger-store.js";
+import type { CreateAccountInput, LedgerStore, ListAccountsOptions, PostTransactionAudit } from "../../ports/ledger-store.js";
+import { appendAuditEventInTx } from "./audit-append.js";
 
 interface AccountRow {
   id: string;
@@ -117,7 +118,7 @@ export class PostgresLedgerStore implements LedgerStore {
     return rows.map(mapAccountRow);
   }
 
-  async postTransaction(input: TransactionInput): Promise<Transaction> {
+  async postTransaction(input: TransactionInput, auditBuilder?: PostTransactionAudit): Promise<Transaction> {
     assertBalanced(input.postings);
     const requestHash = hashTransactionRequest(input);
 
@@ -180,8 +181,15 @@ export class PostgresLedgerStore implements LedgerStore {
         ]);
       }
 
+      const transaction = mapTransactionRow(transactionRow);
+      // The audit entry for a posting is written in THIS transaction (after the account row locks
+      // are held), so a committed posting always has its audit record - no at-least-once gap.
+      if (auditBuilder) {
+        await appendAuditEventInTx(client, auditBuilder(transaction), new Date());
+      }
+
       await client.query("COMMIT");
-      return mapTransactionRow(transactionRow);
+      return transaction;
     } catch (err) {
       await client.query("ROLLBACK").catch(() => {});
       throw err;

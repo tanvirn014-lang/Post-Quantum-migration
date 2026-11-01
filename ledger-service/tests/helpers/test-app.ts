@@ -39,7 +39,8 @@ export async function createTestApp(
   extras: { supabase?: SupabaseVerifier } = {},
 ): Promise<TestApp> {
   const config = testConfig({ rateLimitMax: 100_000, loginRateLimitMax: 100_000, ...overrides });
-  const stores = { ledger: new MemoryLedgerStore(), identity: new MemoryIdentityStore(), audit: new MemoryAuditStore() };
+  const memoryAudit = new MemoryAuditStore();
+  const stores = { ledger: new MemoryLedgerStore(memoryAudit), identity: new MemoryIdentityStore(), audit: memoryAudit };
   const clock = { now: new Date("2026-11-01T10:00:00Z") };
   const hasher = new PasswordHasher({ logN: 10 });
   const tokens = await TokenService.create({

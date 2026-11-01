@@ -54,7 +54,8 @@ export async function composeApplication(config: AppConfig): Promise<Application
       "LEDGER_STORE=memory - using in-process stores. Nothing persists across restarts and this is " +
         "not for production use. Set LEDGER_STORE=postgres + DATABASE_URL for a real deployment.",
     );
-    stores = { ledger: new MemoryLedgerStore(), identity: new MemoryIdentityStore(), audit: new MemoryAuditStore() };
+    const memoryAudit = new MemoryAuditStore();
+    stores = { ledger: new MemoryLedgerStore(memoryAudit), identity: new MemoryIdentityStore(), audit: memoryAudit };
   }
 
   const tokens = await TokenService.create({

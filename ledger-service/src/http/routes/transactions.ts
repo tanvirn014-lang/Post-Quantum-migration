@@ -80,26 +80,29 @@ export function registerTransactionRoutes(deps: RouteDeps): FastifyPluginAsync {
         throw new ForbiddenError("You can only transfer from your own accounts");
       }
 
-      const transaction = await ledger.transfer({
-        idempotencyKey,
-        fromAccountId: body.fromAccountId,
-        toAccountId: body.toAccountId,
-        amountMinorUnits: BigInt(body.amountMinorUnits),
-        currency: body.currency,
-        description: body.description,
-        ...(body.metadata !== undefined ? { metadata: body.metadata } : {}),
-        context: provenance(req, user),
-      });
-      await audit.record({
-        actorUserId: user.id,
-        actorRole: user.role,
-        action: "transfer.create",
-        resourceType: "transaction",
-        resourceId: transaction.id,
-        outcome: "success",
-        ...requestContext(req),
-        details: { from: body.fromAccountId, to: body.toAccountId, amountMinorUnits: body.amountMinorUnits, currency: body.currency },
-      });
+      const transaction = await ledger.transfer(
+        {
+          idempotencyKey,
+          fromAccountId: body.fromAccountId,
+          toAccountId: body.toAccountId,
+          amountMinorUnits: BigInt(body.amountMinorUnits),
+          currency: body.currency,
+          description: body.description,
+          ...(body.metadata !== undefined ? { metadata: body.metadata } : {}),
+          context: provenance(req, user),
+        },
+        // Audited inside the posting transaction: a committed transfer always has its audit entry.
+        (txn) => ({
+          actorUserId: user.id,
+          actorRole: user.role,
+          action: "transfer.create",
+          resourceType: "transaction",
+          resourceId: txn.id,
+          outcome: "success",
+          ...requestContext(req),
+          details: { from: body.fromAccountId, to: body.toAccountId, amountMinorUnits: body.amountMinorUnits, currency: body.currency },
+        }),
+      );
       void reply.status(201).send(toTransactionDTO(transaction));
     });
 
@@ -107,23 +110,25 @@ export function registerTransactionRoutes(deps: RouteDeps): FastifyPluginAsync {
       const user = requireUser(req);
       const idempotencyKey = scopedIdempotencyKey(req, user);
       const body = journalSchema.parse(req.body);
-      const transaction = await ledger.postTransaction({
-        idempotencyKey,
-        description: body.description,
-        postings: body.postings.map((p) => ({ accountId: p.accountId, amountMinorUnits: BigInt(p.amountMinorUnits), currency: p.currency })),
-        ...(body.metadata !== undefined ? { metadata: body.metadata } : {}),
-        context: provenance(req, user),
-      });
-      await audit.record({
-        actorUserId: user.id,
-        actorRole: user.role,
-        action: "transaction.post",
-        resourceType: "transaction",
-        resourceId: transaction.id,
-        outcome: "success",
-        ...requestContext(req),
-        details: { postings: body.postings.length },
-      });
+      const transaction = await ledger.postTransaction(
+        {
+          idempotencyKey,
+          description: body.description,
+          postings: body.postings.map((p) => ({ accountId: p.accountId, amountMinorUnits: BigInt(p.amountMinorUnits), currency: p.currency })),
+          ...(body.metadata !== undefined ? { metadata: body.metadata } : {}),
+          context: provenance(req, user),
+        },
+        (txn) => ({
+          actorUserId: user.id,
+          actorRole: user.role,
+          action: "transaction.post",
+          resourceType: "transaction",
+          resourceId: txn.id,
+          outcome: "success",
+          ...requestContext(req),
+          details: { postings: body.postings.length },
+        }),
+      );
       void reply.status(201).send(toTransactionDTO(transaction));
     });
 

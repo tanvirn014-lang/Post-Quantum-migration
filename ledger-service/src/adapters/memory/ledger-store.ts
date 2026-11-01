@@ -3,7 +3,8 @@ import { newAccountId, newPostingId, newTransactionId } from "../../domain/ids.j
 import type { Account, Posting, Transaction, TransactionInput } from "../../domain/ledger.js";
 import { IdempotencyKeyReusedError } from "../../domain/errors.js";
 import { hashTransactionRequest } from "../../app/idempotency.js";
-import type { CreateAccountInput, LedgerStore, ListAccountsOptions } from "../../ports/ledger-store.js";
+import type { CreateAccountInput, LedgerStore, ListAccountsOptions, PostTransactionAudit } from "../../ports/ledger-store.js";
+import type { AuditStore } from "../../ports/audit-store.js";
 
 /**
  * In-process implementation of LedgerStore. Node is single-threaded, so there is no real
@@ -16,6 +17,10 @@ export class MemoryLedgerStore implements LedgerStore {
   private postingsByTransaction = new Map<string, Posting[]>();
   private postingsByAccount = new Map<string, Posting[]>();
   private idempotencyIndex = new Map<string, { transactionId: string; requestHash: string }>();
+
+  /** The audit appender used to record a posting's audit event in the same (synchronous) unit of
+   *  work. Node is single-threaded, so appending before the maps mutate makes the two atomic. */
+  constructor(private readonly audit?: Pick<AuditStore, "append">) {}
 
   async createAccount(input: CreateAccountInput): Promise<Account> {
     const account: Account = {
@@ -44,7 +49,7 @@ export class MemoryLedgerStore implements LedgerStore {
     return all.slice(0, opts?.limit ?? 100).map((a) => ({ ...a }));
   }
 
-  async postTransaction(input: TransactionInput): Promise<Transaction> {
+  async postTransaction(input: TransactionInput, auditBuilder?: PostTransactionAudit): Promise<Transaction> {
     assertBalanced(input.postings);
 
     const requestHash = hashTransactionRequest(input);
@@ -80,6 +85,12 @@ export class MemoryLedgerStore implements LedgerStore {
       currency: p.currency.toUpperCase(),
       createdAt: postedAt,
     }));
+
+    // Record the posting's audit event before mutating any map, so a failure leaves nothing behind.
+    if (auditBuilder) {
+      if (!this.audit) throw new Error("MemoryLedgerStore was given no audit appender but a posting audit was requested");
+      await this.audit.append(auditBuilder({ ...transaction }), new Date());
+    }
 
     this.transactions.set(transactionId, transaction);
     this.postingsByTransaction.set(transactionId, postings);

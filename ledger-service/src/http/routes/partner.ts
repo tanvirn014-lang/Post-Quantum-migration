@@ -68,7 +68,7 @@ function peerKey(req: FastifyRequest): string {
  * Partners can only CREDIT customer accounts from the partner settlement account - never debit.
  */
 export function registerPartnerRoutes(deps: RouteDeps): FastifyPluginAsync {
-  const { ledger, identity, audit, config } = deps;
+  const { ledger, identity, config } = deps;
   const secret = config.sidecarAssertionSecret;
   const limit = { rateLimit: { max: 120, timeWindow: "1 minute", keyGenerator: peerKey } };
   // Single-use guard: an assertion's jti is accepted once. TTL is twice the 30 s freshness window,
@@ -116,41 +116,44 @@ export function registerPartnerRoutes(deps: RouteDeps): FastifyPluginAsync {
       // Bank-internal accounts are not payable by partners, and look nonexistent to them.
       if (!target || target.kind === "settlement") throw new AccountNotFoundError(body.toAccountId);
 
-      const transaction = await ledger.transfer({
-        // Scoped to the peer: one peer's key can never replay (or collide with) another's.
-        idempotencyKey: `partner:${a.peerId}:${idempotencyKeyHeader.parse(header)}`,
-        fromAccountId: settlement.id,
-        toAccountId: target.id,
-        amountMinorUnits: BigInt(body.amountMinorUnits),
-        currency: body.currency,
-        description: `Partner payment: ${body.reference}`,
-        context: {
-          channel: "partner",
-          peer: { id: a.peerId, name: a.peerName },
-          tls: { keyExchange: a.keyExchange, negotiatedGroup: a.negotiatedGroup, decision: a.decision },
-          correlationId: a.correlationId,
-        },
-      });
-      await audit.record({
-        actorUserId: null,
-        actorRole: "partner",
-        action: "partner.payment.create",
-        resourceType: "transaction",
-        resourceId: transaction.id,
-        outcome: "success",
-        ip: req.ip,
-        userAgent: req.headers["user-agent"],
-        correlationId: a.correlationId,
-        details: {
-          peerId: a.peerId,
-          peerName: a.peerName,
-          keyExchange: a.keyExchange,
-          negotiatedGroup: a.negotiatedGroup,
+      const transaction = await ledger.transfer(
+        {
+          // Scoped to the peer: one peer's key can never replay (or collide with) another's.
+          idempotencyKey: `partner:${a.peerId}:${idempotencyKeyHeader.parse(header)}`,
+          fromAccountId: settlement.id,
           toAccountId: target.id,
-          amountMinorUnits: body.amountMinorUnits,
+          amountMinorUnits: BigInt(body.amountMinorUnits),
           currency: body.currency,
+          description: `Partner payment: ${body.reference}`,
+          context: {
+            channel: "partner",
+            peer: { id: a.peerId, name: a.peerName },
+            tls: { keyExchange: a.keyExchange, negotiatedGroup: a.negotiatedGroup, decision: a.decision },
+            correlationId: a.correlationId,
+          },
         },
-      });
+        // Audited inside the posting transaction: a committed partner payment always has its entry.
+        (txn) => ({
+          actorUserId: null,
+          actorRole: "partner",
+          action: "partner.payment.create",
+          resourceType: "transaction",
+          resourceId: txn.id,
+          outcome: "success",
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+          correlationId: a.correlationId,
+          details: {
+            peerId: a.peerId,
+            peerName: a.peerName,
+            keyExchange: a.keyExchange,
+            negotiatedGroup: a.negotiatedGroup,
+            toAccountId: target.id,
+            amountMinorUnits: body.amountMinorUnits,
+            currency: body.currency,
+          },
+        }),
+      );
       void reply.status(201).send(toTransactionDTO(transaction));
     });
   };

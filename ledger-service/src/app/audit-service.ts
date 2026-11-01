@@ -6,11 +6,12 @@ const VERIFY_PAGE_SIZE = 500;
 /**
  * Records security-relevant events into the tamper-evident, hash-chained audit log.
  *
- * Failure semantics: record() propagates store errors, so authentication events fail closed
- * (a login that cannot be audited does not succeed). Ledger operations are audited after the
- * posting commits, in a separate database transaction - if that append fails the request
- * reports an error even though the posting is durable, and a retry with the same
- * Idempotency-Key replays the posting and re-attempts the audit entry (at-least-once audit).
+ * Failure semantics: record() propagates store errors, so authentication and configuration
+ * events fail closed (a login that cannot be audited does not succeed). Financial postings are
+ * audited INSIDE the posting's transaction (LedgerStore.postTransaction takes an audit builder),
+ * so a committed posting always has its audit entry and a failed audit rolls the posting back -
+ * there is no at-least-once gap for money movements. record() remains for events not tied to a
+ * posting. Truncating the newest events is still only detectable against an external head hash.
  */
 export class AuditService {
   constructor(

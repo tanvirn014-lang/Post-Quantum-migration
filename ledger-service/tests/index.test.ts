@@ -6,6 +6,7 @@ import "./domain/money.test.js";
 import "./domain/ledger.test.js";
 import "./app/ledger-service.test.js";
 import "./app/identity-supabase.test.js";
+import "./app/ledger-audit-atomicity.test.js";
 import "./identity/crypto.test.js";
 import "./identity/supabase-verifier.test.js";
 import "./audit/chain.test.js";

@@ -1,5 +1,5 @@
 import type { Account, Posting, PostingInput, Transaction, TransactionInput } from "../domain/ledger.js";
-import type { CreateAccountInput, LedgerStore, ListAccountsOptions } from "../ports/ledger-store.js";
+import type { CreateAccountInput, LedgerStore, ListAccountsOptions, PostTransactionAudit } from "../ports/ledger-store.js";
 
 export interface TransferInput {
   idempotencyKey: string;
@@ -34,22 +34,25 @@ export class LedgerService {
     return this.store.listAccounts(opts);
   }
 
-  postTransaction(input: TransactionInput): Promise<Transaction> {
-    return this.store.postTransaction(input);
+  postTransaction(input: TransactionInput, audit?: PostTransactionAudit): Promise<Transaction> {
+    return this.store.postTransaction(input, audit);
   }
 
-  transfer(params: TransferInput): Promise<Transaction> {
+  transfer(params: TransferInput, audit?: PostTransactionAudit): Promise<Transaction> {
     const postings: PostingInput[] = [
       { accountId: params.fromAccountId, amountMinorUnits: -params.amountMinorUnits, currency: params.currency },
       { accountId: params.toAccountId, amountMinorUnits: params.amountMinorUnits, currency: params.currency },
     ];
-    return this.store.postTransaction({
-      idempotencyKey: params.idempotencyKey,
-      description: params.description,
-      postings,
-      ...(params.metadata !== undefined ? { metadata: params.metadata } : {}),
-      ...(params.context !== undefined ? { context: params.context } : {}),
-    });
+    return this.store.postTransaction(
+      {
+        idempotencyKey: params.idempotencyKey,
+        description: params.description,
+        postings,
+        ...(params.metadata !== undefined ? { metadata: params.metadata } : {}),
+        ...(params.context !== undefined ? { context: params.context } : {}),
+      },
+      audit,
+    );
   }
 
   getTransaction(transactionId: string): Promise<{ transaction: Transaction; postings: Posting[] } | null> {

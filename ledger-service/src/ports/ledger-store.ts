@@ -1,4 +1,10 @@
 import type { Account, AccountKind, Posting, Transaction, TransactionInput } from "../domain/ledger.js";
+import type { NewAuditEvent } from "../audit/chain.js";
+
+/** Builds the audit event for a posting from the transaction the store just created. Invoked
+ *  INSIDE the posting's unit of work (only for a real posting, never an idempotent replay), so the
+ *  posting and its audit entry commit atomically. */
+export type PostTransactionAudit = (transaction: Transaction) => NewAuditEvent;
 
 export interface CreateAccountInput {
   ownerCustomerId: string;
@@ -29,7 +35,7 @@ export interface LedgerStore {
    * with the same key and an identical payload returns the original result; a retry with
    * the same key and a different payload throws IdempotencyKeyReusedError.
    */
-  postTransaction(input: TransactionInput): Promise<Transaction>;
+  postTransaction(input: TransactionInput, audit?: PostTransactionAudit): Promise<Transaction>;
 
   getTransactionWithPostings(
     transactionId: string,

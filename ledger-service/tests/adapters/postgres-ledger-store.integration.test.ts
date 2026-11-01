@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import { PostgresLedgerStore } from "../../src/adapters/postgres/ledger-store.js";
+import { PostgresAuditStore } from "../../src/adapters/postgres/audit-store.js";
 import { INTEGRATION_DATABASE_URL, newCustomerId, resetTestDatabase, setupTestDatabase } from "../helpers/pg-test-db.js";
 import {
   AccountNotFoundError,
@@ -57,6 +58,51 @@ describe(
       });
       return (await store.getAccount(dest.id))!;
     }
+
+    it("writes the posting's audit event in the same transaction (money-path audit atomicity)", async () => {
+      const src = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "BDT", allowOverdraft: true });
+      const dest = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "BDT" });
+      const audit = new PostgresAuditStore(pool);
+      const txn = await store.postTransaction(
+        {
+          idempotencyKey: `k-${randomUUID()}`,
+          description: "pay",
+          postings: [
+            { accountId: src.id, amountMinorUnits: -2_000n, currency: "BDT" },
+            { accountId: dest.id, amountMinorUnits: 2_000n, currency: "BDT" },
+          ],
+        },
+        (t) => ({ action: "transfer.create", resourceType: "transaction", resourceId: t.id, outcome: "success", details: { via: "integration" } }),
+      );
+      const events = await audit.list({ limit: 10, action: "transfer.create" });
+      assert.equal(events.length, 1);
+      assert.equal(events[0]!.resourceId, txn.id);
+    });
+
+    it("rolls the posting back if the in-transaction audit append throws (all-or-nothing)", async () => {
+      const src = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "BDT", allowOverdraft: true });
+      const dest = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "BDT" });
+      const key = `k-${randomUUID()}`;
+      await assert.rejects(
+        () =>
+          store.postTransaction(
+            {
+              idempotencyKey: key,
+              description: "pay",
+              postings: [
+                { accountId: src.id, amountMinorUnits: -2_000n, currency: "BDT" },
+                { accountId: dest.id, amountMinorUnits: 2_000n, currency: "BDT" },
+              ],
+            },
+            () => {
+              throw new Error("audit build failed");
+            },
+          ),
+        /audit build failed/,
+      );
+      assert.equal(await store.getTransactionByIdempotencyKey(key), null, "no transaction committed");
+      assert.equal((await store.getAccount(dest.id))!.balanceMinorUnits, 0n, "target balance untouched");
+    });
 
     it("persists an account with a zero starting balance", async () => {
       const account = await store.createAccount({ ownerCustomerId: await newCustomerId(pool), currency: "bdt" });
