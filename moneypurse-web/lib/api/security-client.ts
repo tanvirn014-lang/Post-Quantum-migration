@@ -2,16 +2,28 @@ import type { ApiClient } from "./api-client";
 import { securityApi } from "./clients";
 import type { AuditPage, ChainVerification } from "./types";
 import type {
+  BenchmarkDetail,
+  BenchmarkIndexEntry,
+  CbomComparison,
+  CbomMeta,
   ComponentStatus,
   ConnectionEvent,
   ConnectionPage,
   CryptoConfig,
   CryptoProvider,
   Decision,
+  GroundTruth,
+  HndlRun,
   KeyExchange,
+  MoscaInput,
+  MoscaResult,
   Overview,
   Peer,
   PeerProfile,
+  QuantumAssumption,
+  Scenario,
+  ScenarioParams,
+  ScenarioResult,
   TlsGroup,
   TlsProfile,
 } from "./security-types";
@@ -74,6 +86,24 @@ export function createSecurityClient(api: ApiClient) {
     listAuditEvents: (opts: { limit?: number; beforeSeq?: number } = {}) =>
       api.get<AuditPage>("/v1/audit/events", { query: { limit: opts.limit, beforeSeq: opts.beforeSeq } }),
     verifyAuditChain: () => api.get<ChainVerification>("/v1/audit/verify"),
+
+    listCboms: (limit = 20) => api.get<CbomMeta[]>("/v1/cbom", { query: { limit } }),
+    generateCbom: (lookbackHours: number) => api.post<CbomMeta>("/v1/cbom/generate", { lookbackHours }),
+    getGroundTruth: () => api.get<GroundTruth>("/v1/cbom/ground-truth"),
+    compareCbom: (id: string) => api.post<CbomComparison>(`/v1/cbom/${id}/compare`, {}),
+    getCbomComparison: (id: string) => api.get<CbomComparison>(`/v1/cbom/${id}/comparison`),
+    downloadCbomDocument: (id: string) => api.getBlob(`/v1/cbom/${id}/document`),
+
+    runHndl: (message: string, quantumAssumption: QuantumAssumption) => api.post<HndlRun>("/v1/hndl/run", { message, quantumAssumption }),
+    listHndlRuns: (limit = 10) => api.get<HndlRun[]>("/v1/hndl/runs", { query: { limit } }),
+    mosca: (input: MoscaInput) => api.post<MoscaResult>("/v1/hndl/mosca", input),
+
+    listBenchmarks: (limit = 20) => api.get<BenchmarkIndexEntry[]>("/v1/benchmarks", { query: { limit } }),
+    getBenchmark: (runId: string) => api.get<BenchmarkDetail>(`/v1/benchmarks/${encodeURIComponent(runId)}`),
+    downloadBenchmarkCsv: (runId: string, which: "handshakes" | "throughput") => api.getBlob(`/v1/benchmarks/${encodeURIComponent(runId)}/${which}.csv`),
+
+    listScenarios: () => api.get<Scenario[]>("/v1/experiments/scenarios"),
+    runScenario: (scenarioId: string, params?: ScenarioParams) => api.post<ScenarioResult>("/v1/experiments/run", { scenarioId, ...(params ? { params } : {}) }),
   };
 }
 

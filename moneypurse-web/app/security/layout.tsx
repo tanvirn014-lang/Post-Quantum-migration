@@ -7,6 +7,10 @@ const NAV = [
   { href: "/security/peers", label: "Peers" },
   { href: "/security/crypto", label: "Crypto agility" },
   { href: "/security/telemetry", label: "Telemetry" },
+  { href: "/security/cbom", label: "CBOM" },
+  { href: "/security/hndl", label: "HNDL simulator" },
+  { href: "/security/benchmarks", label: "Benchmarks" },
+  { href: "/security/experiments", label: "Experiments" },
   { href: "/security/audit", label: "Audit log" },
 ];
 

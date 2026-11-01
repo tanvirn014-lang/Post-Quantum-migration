@@ -93,6 +93,19 @@ describe("security console permission hints", () => {
     }
   });
 
+  it("lets both staff roles run the simulator and read benchmarks, but only security administrators generate CBOMs and run experiments", () => {
+    for (const p of ["hndl:run", "benchmarks:read"] as const) {
+      assert.strictEqual(hasSecurityPermission("security_admin", p), true, p);
+      assert.strictEqual(hasSecurityPermission("auditor", p), true, p);
+      assert.strictEqual(hasSecurityPermission("operator", p), false, p);
+      assert.strictEqual(hasSecurityPermission("customer", p), false, p);
+    }
+    for (const p of ["cbom:generate", "experiments:run"] as const) {
+      assert.strictEqual(hasSecurityPermission("security_admin", p), true, p);
+      assert.strictEqual(hasSecurityPermission("auditor", p), false, p);
+    }
+  });
+
   it("denies everything when there is no role", () => {
     assert.strictEqual(hasSecurityPermission(null, "peers:manage"), false);
     assert.strictEqual(hasSecurityPermission(undefined, "telemetry:read"), false);

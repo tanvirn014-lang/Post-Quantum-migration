@@ -137,3 +137,45 @@ describe("ApiClient", () => {
     assert.strictEqual(stub.calls[0]?.headers["authorization"], undefined);
   });
 });
+
+describe("ApiClient.getBlob (authenticated file download)", () => {
+  let stub: InstalledFetch | undefined;
+  afterEach(() => stub?.uninstall());
+  const client = (auth: AuthProvider | null) => new ApiClient({ baseUrl: "http://api.test", auth });
+
+  it("sends the bearer token, returns the bytes and reads the filename from content-disposition", async () => {
+    stub = installFetch({
+      "GET /file.csv": () => new Response("a,b\n1,2\n", { status: 200, headers: { "content-type": "text/csv", "content-disposition": 'attachment; filename="run-handshakes.csv"' } }),
+    });
+    const { blob, filename } = await client(new FakeAuth("tok-1")).getBlob("/file.csv");
+    assert.strictEqual(stub.calls[0]?.headers["authorization"], "Bearer tok-1");
+    assert.strictEqual(await blob.text(), "a,b\n1,2\n");
+    assert.strictEqual(filename, "run-handshakes.csv");
+  });
+
+  it("refreshes once on 401 and retries, like every other call", async () => {
+    let first = true;
+    stub = installFetch({
+      "GET /file": () => {
+        if (first) {
+          first = false;
+          return apiError(401, "INVALID_TOKEN", "expired");
+        }
+        return new Response("ok");
+      },
+    });
+    const auth = new FakeAuth("old");
+    const { blob } = await client(auth).getBlob("/file");
+    assert.strictEqual(auth.refreshCalls, 1);
+    assert.strictEqual(await blob.text(), "ok");
+    assert.strictEqual(stub.calls[1]?.headers["authorization"], "Bearer fresh-token");
+  });
+
+  it("turns an error response into an ApiRequestError instead of returning its body as a file", async () => {
+    stub = installFetch({ "GET /missing": () => apiError(404, "NOT_FOUND", "Benchmark run was not found") });
+    await assert.rejects(
+      () => client(new FakeAuth("t")).getBlob("/missing"),
+      (err: unknown) => err instanceof ApiRequestError && err.status === 404 && err.code === "NOT_FOUND",
+    );
+  });
+});

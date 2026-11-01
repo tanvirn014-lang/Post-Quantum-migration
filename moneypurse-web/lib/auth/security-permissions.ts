@@ -6,13 +6,21 @@ import type { Role } from "./session";
  * security-service/src/auth/permissions.ts. It only decides which controls to show - the
  * server enforces every action and answers 403 regardless of what the UI offers.
  */
-export type SecurityPermission = "peers:manage" | "config:manage" | "alerts:acknowledge" | "telemetry:read";
+export type SecurityPermission =
+  | "peers:manage"
+  | "config:manage"
+  | "alerts:acknowledge"
+  | "telemetry:read"
+  | "cbom:generate"
+  | "experiments:run"
+  | "hndl:run"
+  | "benchmarks:read";
 
 const SECURITY_PERMISSIONS: Record<Role, readonly SecurityPermission[]> = {
   customer: [],
   operator: [],
-  security_admin: ["peers:manage", "config:manage", "alerts:acknowledge", "telemetry:read"],
-  auditor: ["telemetry:read"],
+  security_admin: ["peers:manage", "config:manage", "alerts:acknowledge", "telemetry:read", "cbom:generate", "experiments:run", "hndl:run", "benchmarks:read"],
+  auditor: ["telemetry:read", "hndl:run", "benchmarks:read"],
 };
 
 export function hasSecurityPermission(role: Role | null | undefined, permission: SecurityPermission): boolean {

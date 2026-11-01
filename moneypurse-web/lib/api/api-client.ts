@@ -112,6 +112,25 @@ export class ApiClient {
     return parseApiResponse<T>(res);
   }
 
+  /**
+   * Authenticated download of a file response (CSV, CycloneDX JSON). A plain link cannot carry the
+   * bearer token, so the console fetches the bytes here and hands the Blob to the browser. Same
+   * single refresh-and-retry as every other call; errors use the usual envelope.
+   */
+  async getBlob(path: string, opts: Omit<RequestOptions, "body"> = {}): Promise<{ blob: Blob; filename: string | null }> {
+    const auth = this.options.auth;
+    const authenticated = opts.authenticated !== false && auth !== null;
+    let res = await this.send("GET", path, { ...opts, headers: { ...(opts.headers ?? {}), Accept: "*/*" } }, authenticated ? auth!.getAccessToken() : null);
+    if (res.status === 401 && authenticated) {
+      const fresh = await auth!.refreshAccessToken();
+      if (fresh) res = await this.send("GET", path, { ...opts, headers: { ...(opts.headers ?? {}), Accept: "*/*" } }, fresh);
+    }
+    if (!res.ok) return parseApiResponse<never>(res);
+    const disposition = res.headers.get("content-disposition") ?? "";
+    const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? null;
+    return { blob: await res.blob(), filename };
+  }
+
   get<T>(path: string, opts?: Omit<RequestOptions, "body">): Promise<T> {
     return this.request<T>("GET", path, opts);
   }
