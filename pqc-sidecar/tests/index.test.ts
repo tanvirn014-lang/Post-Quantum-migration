@@ -5,3 +5,4 @@ import "./sidecar.test.js";
 import "./scenarios.test.js";
 import "./bench.test.js";
 import "./admin.test.js";
+import "./internal-mtls.test.js";
