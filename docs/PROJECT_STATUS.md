@@ -281,3 +281,19 @@ Carried-forward limitations unchanged by this work: no real KMS/HSM or at-rest v
 HA/DR, containers or IaC in operation (M7, local slices planned); sidecar→core hop still plain HTTP + HMAC until M8
 internal mTLS lands; the CBOM ground truth still awaits an independent human reviewer (M9.c). Hybrid PQ protection
 remains key-establishment-only at the external sidecar boundary; certificates and token signatures are classical.
+
+### Stage 10: M4–M9 (post-audit, 2026-11-02) — local slices delivered; infra/human parts bounded
+
+Staged plan: `docs/audits/11_STAGED_PLAN_M4_M9.md` (every task classified LOCAL / INFRA / HUMAN).
+
+| Milestone | Change | Status | Evidence |
+|---|---|---|---|
+| M4 KMS | `KeyManagementService` port + local `DevKms` (AES-256-GCM envelope, versioned master keys); `customers.full_name` envelope-encrypted at rest in Postgres; fails closed on tamper/wrong-key/KMS-down | SEC-008 VERIFIED; SEC-007/009 PARTIAL (app-level done; **volume TDE + real HSM are INFRA**) | `ledger-service/src/crypto/kms.ts`, `tests/crypto/kms.test.ts`, `tests/adapters/postgres-identity-kms.integration.test.ts` |
+| M8 internal mTLS | dev PKI (internal CA → ECDSA server/client certs) + TLS 1.3 mutual-TLS transport + revocation deny-list | SEC-001/002, PQC-012 PARTIAL (transport VERIFIED; **live hop-2 wiring, edge/DB TLS, OCSP are INFRA**) | `pqc-sidecar/src/internal-mtls.ts`, `tests/internal-mtls.test.ts`, `docs/audits/12_HOP_PROTECTION.md` |
+| M7 HA/DR | verified logical backup/restore (`scripts/db-backup.mjs`/`db-restore.mjs`); Dockerfiles + deploy compose + local HA-Postgres compose (artifacts) | REL-008/002/007, OPS-007/011 PARTIAL (**replication/failover/PITR/offsite/k8s are INFRA**) | `scripts/db-*.mjs`, `*/Dockerfile`, `deploy/**`, `docs/audits/13_HA_DR.md` |
+| M9 CBOM validation | independent ground-truth template + sourcing guide + reproducible review procedure; diff tooling already exists | CBOM-005/RES-010 PARTIAL — **final human sign-off PENDING by design (not fabricated)** | `security-service/ground-truth/cbom-ground-truth.template.json`, `docs/audits/14_CBOM_GROUND_TRUTH.md` |
+
+Test counts on `main` after Stage 10 (PostgreSQL running): ledger 206, security 144, sidecar 121, web 210; claim-audit clean.
+Outstanding = external infrastructure (cloud KMS/HSM, at-rest volume encryption, HA replication/failover, PITR, offsite
+immutable backups, k8s/Helm, edge/DB TLS, OCSP responder) and one independent human (the CBOM sign-off). Every such item
+is labelled INFRA or HUMAN in the plan and NOT claimed done.

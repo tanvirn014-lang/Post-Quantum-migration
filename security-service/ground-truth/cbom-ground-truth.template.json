@@ -1,0 +1,20 @@
+{
+  "_README": "INDEPENDENT CBOM ground-truth TEMPLATE. Copy to cbom-ground-truth.independent.json and fill it by reading ONLY the source tree + docs/audits/14_CBOM_GROUND_TRUTH.md (the sourcing guide) - NOT security-service/src/cbom/generator.ts and NOT the existing cbom-ground-truth.json. Delete this _README and the example item before use. Schema: security-service/src/cbom/compare.ts (groundTruthInputSchema).",
+  "schemaVersion": 1,
+  "scope": "FILL IN: exactly which services, directories, file types and asset classes you inventoried (e.g. 'cryptographic algorithms, the TLS protocol, X.509 certificates and key/secret/token/digest material created, stored or checked in the production code, .env.example files and research PKI of ledger-service, security-service and pqc-sidecar as of commit <sha>').",
+  "preparedBy": "FILL IN: your name/role and method. MUST be an independent reviewer - not the author of src/cbom/generator.ts and not an AI acting on that author's behalf. State that you worked from the sources, not the generator.",
+  "excluded": [
+    "FILL IN: what you deliberately left out (e.g. node_modules, dist, vendored CycloneDX schemas, test fixtures, library-internal algorithms, moneypurse-web)."
+  ],
+  "items": [
+    {
+      "id": "example-delete-me",
+      "kind": "algorithm",
+      "name": "ExampleAlgorithm",
+      "expectedProvenance": "declared",
+      "expected": { "primitive": "key-agree", "algorithmFamily": "ECDH" },
+      "locations": ["path/to/where/you/found/it.ts"],
+      "notes": "Add one item per asset you find. kind in {algorithm, protocol, certificate, related-crypto-material}. expectedProvenance: 'declared' = named in source/config; 'observed' = only visible in runtime telemetry. 'expected' attributes (primitive, algorithmFamily, parameterSetIdentifier, ellipticCurve) are compared when present. 'locations' are repo-relative paths where you saw it used."
+    }
+  ]
+}
