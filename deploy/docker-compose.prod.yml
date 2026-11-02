@@ -1,0 +1,71 @@
+# Production-oriented composition (IaC artifact). It builds every service from its Dockerfile and
+# wires them to PostgreSQL. This is a reference topology for a single host; real production should
+# run HA Postgres (see ./postgres-ha), terminate TLS at an ingress/LB, inject secrets from a
+# secrets manager (never env literals), and use k8s/Helm. NOT run in CI; see docs/audits/13_HA_DR.md.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ledger
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in the environment}
+      POSTGRES_DB: ledger
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "ledger"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ledger:
+    build: ../ledger-service
+    environment:
+      NODE_ENV: production
+      LEDGER_STORE: postgres
+      DATABASE_URL: postgres://ledger:${POSTGRES_PASSWORD}@postgres:5432/ledger
+      JWT_PRIVATE_KEY_FILE: /run/secrets/jwt_key
+      # SIDECAR_ASSERTION_SECRET, KMS_MASTER_KEY, SUPABASE_URL, etc. come from the secrets manager.
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  security:
+    build: ../security-service
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://ledger:${POSTGRES_PASSWORD}@postgres:5432/security
+      JWKS_URL: http://ledger:3000/.well-known/jwks.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  sidecar:
+    build: ../pqc-sidecar
+    environment:
+      NODE_ENV: production
+      UPSTREAM_URL: http://ledger:3000
+      SECURITY_SERVICE_URL: http://security:3200
+    depends_on:
+      - ledger
+      - security
+    restart: unless-stopped
+
+  web:
+    build: ../moneypurse-web
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_LEDGER_API_URL: http://ledger:3000
+    depends_on:
+      - ledger
+    restart: unless-stopped
+
+volumes:
+  pg_data:

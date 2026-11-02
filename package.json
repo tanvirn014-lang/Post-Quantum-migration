@@ -9,6 +9,8 @@
     "db:down": "docker compose -f ledger-service/docker-compose.yml down",
     "migrate": "npm --prefix ledger-service run migrate && npm --prefix security-service run migrate",
     "seed": "npm --prefix ledger-service run seed",
+    "db:backup": "node scripts/db-backup.mjs",
+    "db:restore": "node scripts/db-restore.mjs",
     "dev:ledger": "npm --prefix ledger-service run dev",
     "dev:web": "npm --prefix moneypurse-web run dev -- -p 3100",
     "test:ledger": "npm --prefix ledger-service test",
